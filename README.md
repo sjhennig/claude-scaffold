@@ -1,3 +1,5 @@
+[![CI](https://github.com/sjhennig/claude-scaffold/actions/workflows/ci.yml/badge.svg)](https://github.com/sjhennig/claude-scaffold/actions/workflows/ci.yml)
+
 # claude-scaffold
 
 Generate a fully configured project directory for AI-first development with Claude Code inside a VS Code devcontainer.
