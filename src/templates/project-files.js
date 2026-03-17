@@ -62,6 +62,7 @@ const packagesByFramework = {
       'react-dom': '^19.0.0',
     },
     devDependencies: {
+      '@eslint/eslintrc': '^3.2.0',
       '@eslint/js': '^9.0.0',
       '@testing-library/jest-dom': '^6.0.0',
       '@testing-library/react': '^16.0.0',
@@ -453,6 +454,120 @@ export function generateGitignore(config) {
 }
 
 // ---------------------------------------------------------------------------
+// ESLint config (flat config, ESLint v9)
+// ---------------------------------------------------------------------------
+
+const eslintConfigByFramework = {
+  'react-vite-ts': () => `import js from '@eslint/js';
+import globals from 'globals';
+import reactHooks from 'eslint-plugin-react-hooks';
+import reactRefresh from 'eslint-plugin-react-refresh';
+import tseslint from 'typescript-eslint';
+
+export default tseslint.config(
+  { ignores: ['dist'] },
+  {
+    extends: [js.configs.recommended, ...tseslint.configs.recommended],
+    files: ['**/*.{ts,tsx}'],
+    languageOptions: {
+      ecmaVersion: 2020,
+      globals: globals.browser,
+    },
+    plugins: {
+      'react-hooks': reactHooks,
+      'react-refresh': reactRefresh,
+    },
+    rules: {
+      ...reactHooks.configs.recommended.rules,
+      'react-refresh/only-export-components': [
+        'warn',
+        { allowConstantExport: true },
+      ],
+    },
+  },
+);
+`,
+  // Next.js uses eslint-config-next which provides its own rules
+  'nextjs-ts': () => `import { dirname } from 'path';
+import { fileURLToPath } from 'url';
+import { FlatCompat } from '@eslint/eslintrc';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+
+const compat = new FlatCompat({
+  baseDirectory: __dirname,
+});
+
+const eslintConfig = [
+  ...compat.extends('next/core-web-vitals', 'next/typescript'),
+];
+
+export default eslintConfig;
+`,
+  'node-ts': () => `import js from '@eslint/js';
+import globals from 'globals';
+import tseslint from 'typescript-eslint';
+
+export default tseslint.config(
+  { ignores: ['dist'] },
+  {
+    extends: [js.configs.recommended, ...tseslint.configs.recommended],
+    files: ['**/*.ts'],
+    languageOptions: {
+      ecmaVersion: 2022,
+      globals: globals.node,
+    },
+  },
+);
+`,
+};
+
+export function generateEslintConfig(config) {
+  return eslintConfigByFramework[config.framework]();
+}
+
+// ---------------------------------------------------------------------------
+// Prettier config
+// ---------------------------------------------------------------------------
+
+export function generatePrettierRc() {
+  const config = {
+    singleQuote: true,
+    trailingComma: 'all',
+    tabWidth: 2,
+    semi: true,
+  };
+
+  return JSON.stringify(config, null, 2) + '\n';
+}
+
+// ---------------------------------------------------------------------------
+// .prettierignore
+// ---------------------------------------------------------------------------
+
+const prettierIgnoreByFramework = {
+  'react-vite-ts': `node_modules
+dist
+coverage
+`,
+  'nextjs-ts': `node_modules
+.next
+out
+dist
+coverage
+`,
+  'node-ts': `node_modules
+dist
+coverage
+`,
+};
+
+export function generatePrettierIgnore(config) {
+  return prettierIgnoreByFramework[config.framework];
+}
+
+// ---------------------------------------------------------------------------
 // .env / .env.example
 // ---------------------------------------------------------------------------
 
@@ -578,6 +693,9 @@ export function getFrameworkFiles(config) {
         ['vite.config.ts', generateViteConfig(config)],
         ['vitest.config.ts', generateVitestConfig(config)],
         ['tsconfig.json', generateTsConfig(config)],
+        ['eslint.config.js', generateEslintConfig(config)],
+        ['.prettierrc', generatePrettierRc()],
+        ['.prettierignore', generatePrettierIgnore(config)],
         ['index.html', generateIndexHtml(config)],
         ['src/setup-tests.ts', generateSetupTests()],
         ['src/App.tsx', generateApp(config)],
@@ -591,6 +709,9 @@ export function getFrameworkFiles(config) {
         ['next.config.ts', generateNextConfig()],
         ['vitest.config.ts', generateVitestConfig(config)],
         ['tsconfig.json', generateTsConfig(config)],
+        ['eslint.config.mjs', generateEslintConfig(config)],
+        ['.prettierrc', generatePrettierRc()],
+        ['.prettierignore', generatePrettierIgnore(config)],
         ['next-env.d.ts', generateNextEnvDts()],
         ['src/setup-tests.ts', generateSetupTests()],
         ['src/app/layout.tsx', generateNextLayout(config)],
@@ -602,6 +723,9 @@ export function getFrameworkFiles(config) {
         ['package.json', generatePackageJson(config)],
         ['vitest.config.ts', generateVitestConfig(config)],
         ['tsconfig.json', generateTsConfig(config)],
+        ['eslint.config.js', generateEslintConfig(config)],
+        ['.prettierrc', generatePrettierRc()],
+        ['.prettierignore', generatePrettierIgnore(config)],
         ['src/index.ts', generateNodeIndex(config)],
       ];
 
