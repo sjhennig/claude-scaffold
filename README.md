@@ -141,7 +141,7 @@ CLAUDE.md is intentionally kept under 100 lines. It's a quick-reference card, no
 
 ## Prerequisites
 
-- [Node.js](https://nodejs.org/) (v18+)
+- [Node.js](https://nodejs.org/) (v20+)
 - [Docker Desktop](https://www.docker.com/products/docker-desktop/) (for the devcontainer)
 - [VS Code](https://code.visualstudio.com/) with the [Dev Containers extension](https://marketplace.visualstudio.com/items?itemName=ms-vscode-remote.remote-containers)
 - [Claude Code](https://docs.anthropic.com/en/docs/claude-code) authenticated on your host machine
