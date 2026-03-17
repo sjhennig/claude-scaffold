@@ -56,7 +56,7 @@ const questions = [
     filter: (input) =>
       input
         .split(',')
-        .map((k) => k.trim())
+        .map((k) => k.trim().toUpperCase().replace(/\s+/g, '_'))
         .filter(Boolean),
   },
   {
