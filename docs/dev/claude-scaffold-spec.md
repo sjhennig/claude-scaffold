@@ -111,7 +111,7 @@ Contents:
    5. Run tests. If any fail, fix the implementation, not the tests.
    6. Refactor if needed. Run tests after each change.
    7. Commit passing implementation.
-   
+
    Plus: "Tests live next to the code they test: `foo.ts` → `foo.test.ts`"
 
 ### `.claude/settings.json`
@@ -225,7 +225,7 @@ Standard Vite HTML shell with `<div id="root">` and `<script type="module" src="
 
 ### `.gitignore`
 
-node_modules, dist, .env, .env.local, .env.*.local, .DS_Store, Thumbs.db, .vscode/*, !.vscode/extensions.json, *.swp, *.swo, .claude.json, coverage/
+node*modules, dist, .env, .env.local, .env.*.local, .DS*Store, Thumbs.db, .vscode/*, !.vscode/extensions.json, _.swp, _.swo, .claude.json, coverage/
 
 ### `.env` and `.env.example`
 

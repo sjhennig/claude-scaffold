@@ -25,15 +25,15 @@ claude-scaffold
 
 You'll be prompted for:
 
-| Prompt | Default |
-|--------|---------|
-| Project name (kebab-case) | *(required)* |
-| One-line description | "A new Claude Code project" |
-| Framework | React + Vite + TypeScript (see below) |
-| Dev server port | 5173 (React+Vite) / 3000 (Next.js, Node) |
-| Uses Anthropic API directly? | No |
-| Additional API key names | *(none)* |
-| Initialize git? | Yes |
+| Prompt                       | Default                                  |
+| ---------------------------- | ---------------------------------------- |
+| Project name (kebab-case)    | _(required)_                             |
+| One-line description         | "A new Claude Code project"              |
+| Framework                    | React + Vite + TypeScript (see below)    |
+| Dev server port              | 5173 (React+Vite) / 3000 (Next.js, Node) |
+| Uses Anthropic API directly? | No                                       |
+| Additional API key names     | _(none)_                                 |
+| Initialize git?              | Yes                                      |
 
 The scaffolded project is created at `./{project-name}` relative to your current directory.
 
@@ -43,11 +43,11 @@ The scaffolded project is created at `./{project-name}` relative to your current
 
 Three framework templates are available:
 
-| Framework | Best for |
-|-----------|----------|
-| **React + Vite + TypeScript** | Client-side apps, dashboards, browser-based tools |
-| **Next.js + TypeScript** | Full-stack web apps, anything needing SSR or API routes |
-| **Node + TypeScript** | CLI tools, APIs, backend services, automation, anything without a UI |
+| Framework                     | Best for                                                             |
+| ----------------------------- | -------------------------------------------------------------------- |
+| **React + Vite + TypeScript** | Client-side apps, dashboards, browser-based tools                    |
+| **Next.js + TypeScript**      | Full-stack web apps, anything needing SSR or API routes              |
+| **Node + TypeScript**         | CLI tools, APIs, backend services, automation, anything without a UI |
 
 Each framework generates the appropriate package.json, tsconfig, starter files, and directory structure. The devcontainer, Claude Code config, context docs, and permissions are shared across all frameworks.
 

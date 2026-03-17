@@ -1,6 +1,7 @@
 # Task: Add Next.js + TypeScript and Node + TypeScript framework templates
 
 Add two new framework options to claude-scaffold so users can choose between three templates:
+
 1. React + Vite + TypeScript (already exists)
 2. Next.js + TypeScript (new)
 3. Node + TypeScript — no frontend (new)
@@ -17,6 +18,7 @@ Add the two new framework choices to the framework prompt:
 - `{ name: 'Node + TypeScript (no frontend)', value: 'node-ts' }`
 
 Update the dev port default to change dynamically based on framework selection. Use inquirer's `when` and `default` features, or handle it in the filter/default logic:
+
 - react-vite-ts → default port 5173
 - nextjs-ts → default port 3000
 - node-ts → default port 3000
@@ -28,6 +30,7 @@ Update the dev port default to change dynamically based on framework selection. 
 Add command sets for the two new frameworks in the commands lookup (the switch/case or map):
 
 **nextjs-ts commands:**
+
 ```
 npm run dev          # Start Next.js dev server
 npm run build        # Production build
@@ -39,6 +42,7 @@ npm run format       # Prettier
 ```
 
 **node-ts commands:**
+
 ```
 npm run dev          # Run with tsx in watch mode
 npm run build        # Compile TypeScript
@@ -132,6 +136,7 @@ This is the biggest change. Add framework-specific generators for package.json, 
 ### Config files for nextjs-ts
 
 **tsconfig.json (Next.js style):**
+
 ```json
 {
   "compilerOptions": {
@@ -159,6 +164,7 @@ This is the biggest change. Add framework-specific generators for package.json, 
 ```
 
 **next.config.ts:**
+
 ```typescript
 import type { NextConfig } from 'next';
 
@@ -168,6 +174,7 @@ export default nextConfig;
 ```
 
 **vitest.config.ts for nextjs-ts** (same as react-vite-ts but without the Vite React plugin — use a standalone vitest config):
+
 ```typescript
 import { defineConfig } from 'vitest/config';
 import react from '@vitejs/plugin-react';
@@ -187,13 +194,18 @@ Note: For Next.js, add `@vitejs/plugin-react` to devDependencies so Vitest can h
 **Starter files for nextjs-ts:**
 
 `src/app/layout.tsx`:
+
 ```tsx
 export const metadata = {
   title: '{projectName}',
   description: '{projectDescription}',
 };
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default function RootLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
   return (
     <html lang="en">
       <body>{children}</body>
@@ -203,6 +215,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
 ```
 
 `src/app/page.tsx`:
+
 ```tsx
 export default function Home() {
   return (
@@ -215,6 +228,7 @@ export default function Home() {
 ```
 
 `next-env.d.ts`:
+
 ```typescript
 /// <reference types="next" />
 /// <reference types="next/image-types/global" />
@@ -225,6 +239,7 @@ export default function Home() {
 ### Config files for node-ts
 
 **tsconfig.json (Node style — emits to dist/):**
+
 ```json
 {
   "compilerOptions": {
@@ -252,6 +267,7 @@ export default function Home() {
 ```
 
 **vitest.config.ts for node-ts** (no React plugin, no jsdom):
+
 ```typescript
 import { defineConfig } from 'vitest/config';
 
@@ -265,6 +281,7 @@ export default defineConfig({
 **Starter file for node-ts:**
 
 `src/index.ts`:
+
 ```typescript
 console.log('{projectName} is running');
 ```
@@ -299,6 +316,7 @@ The orchestrator needs to conditionally generate different files based on `confi
 3. Concatenate and write all files
 
 The framework-specific function should handle:
+
 - Which package.json to generate
 - Which tsconfig.json to generate
 - Which config files to generate (vite.config.ts vs next.config.ts vs nothing)
@@ -308,12 +326,15 @@ The framework-specific function should handle:
 ### Directory structures by framework
 
 **react-vite-ts** (unchanged):
+
 - src/components/, src/hooks/, src/utils/, src/types/, src/assets/
 
 **nextjs-ts:**
+
 - src/app/, src/components/, src/hooks/, src/utils/, src/types/, src/assets/
 
 **node-ts:**
+
 - src/utils/, src/types/
 
 ---
@@ -323,6 +344,7 @@ The framework-specific function should handle:
 The architecture.md template should vary the directory structure section by framework:
 
 **react-vite-ts** (unchanged):
+
 ```
 src/
 ├── components/
@@ -334,6 +356,7 @@ src/
 ```
 
 **nextjs-ts:**
+
 ```
 src/
 ├── app/           — Next.js App Router (pages, layouts, API routes)
@@ -345,6 +368,7 @@ src/
 ```
 
 **node-ts:**
+
 ```
 src/
 ├── utils/
@@ -359,6 +383,7 @@ src/
 ### README.md (the scaffold tool's own README, not the generated one)
 
 Update to reflect that three frameworks are now supported. List them with a brief description of when to use each:
+
 - React + Vite + TypeScript — client-side apps, dashboards, browser-based tools
 - Next.js + TypeScript — full-stack web apps, anything needing SSR or API routes
 - Node + TypeScript — CLI tools, APIs, backend services, automation, anything without a UI
@@ -366,6 +391,7 @@ Update to reflect that three frameworks are now supported. List them with a brie
 ### Generated README.md (in project-files.js)
 
 The generated README already adapts to the project name, port, etc. Make sure it also adapts the dev server instructions to the framework:
+
 - react-vite-ts: "Start the dev server: `npm run dev`, open http://localhost:{port}"
 - nextjs-ts: "Start the dev server: `npm run dev`, open http://localhost:{port}"
 - node-ts: "Start in watch mode: `npm run dev` (restarts on file changes)"

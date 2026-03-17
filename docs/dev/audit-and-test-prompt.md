@@ -80,6 +80,7 @@ export default defineConfig({
 ### 2.4 File convention
 
 Tests live next to the code they test:
+
 - `src/prompts.js` → `src/prompts.test.js`
 - `src/index.js` → `src/index.test.js`
 - `src/templates/devcontainer.js` → `src/templates/devcontainer.test.js`
@@ -90,6 +91,7 @@ Tests live next to the code they test:
 ## Phase 3: Write tests
 
 For each test file, follow this cycle:
+
 1. Write the tests first
 2. Run them (`npm test`)
 3. If any fail because of a genuine bug in the source code, fix the source code — do not change the test
@@ -172,6 +174,7 @@ function withConfig(overrides) {
 **src/templates/project-files.test.js** — Test ALL generated project files:
 
 package.json tests (per framework):
+
 - Output is valid JSON
 - Has the correct project name
 - Has `private: true`
@@ -181,6 +184,7 @@ package.json tests (per framework):
 - Scripts use the right commands for the framework (e.g., `vite` for react-vite-ts, `next dev` for nextjs-ts, `tsx watch` for node-ts)
 
 .gitignore tests:
+
 - Includes node_modules/
 - Includes .env
 - Includes .DS_Store
@@ -188,6 +192,7 @@ package.json tests (per framework):
 - Includes framework-specific entries (.next/ for Next.js, dist/ for Node)
 
 .env tests:
+
 - Includes ANTHROPIC_API_KEY when useAnthropicApi is true
 - Does NOT include ANTHROPIC_API_KEY when useAnthropicApi is false
 - Includes additional keys from additionalEnvKeys
@@ -195,6 +200,7 @@ package.json tests (per framework):
 - Includes the "never commit" warning comment
 
 README tests:
+
 - Includes the project name
 - Includes devcontainer setup instructions
 - Includes the correct dev server port
@@ -202,12 +208,14 @@ README tests:
 - Mentions Claude Code workflow (CLAUDE.md, docs/, specs)
 
 tsconfig.json tests (per framework):
+
 - Output is valid JSON
 - react-vite-ts: has `jsx: "react-jsx"`, `noEmit: true`
 - nextjs-ts: has `jsx: "preserve"`, Next.js plugin, path alias
 - node-ts: has `outDir: "./dist"`, `module: "NodeNext"`, no JSX
 
 Config file presence tests:
+
 - react-vite-ts generates vite.config.ts
 - nextjs-ts generates next.config.ts but NOT vite.config.ts
 - node-ts generates neither vite.config.ts nor next.config.ts
@@ -215,6 +223,7 @@ Config file presence tests:
 - nextjs-ts and node-ts do NOT generate index.html
 
 ESLint config tests (generateEslintConfig):
+
 - Returns different configs per framework
 - react-vite-ts: imports react-hooks and react-refresh plugins, imports typescript-eslint, uses browser globals, ignores dist/
 - nextjs-ts: uses FlatCompat layer from @eslint/eslintrc, extends next/core-web-vitals and next/typescript, is generated as eslint.config.mjs (not .js) so next lint discovers it correctly
@@ -222,6 +231,7 @@ ESLint config tests (generateEslintConfig):
 - nextjs-ts package.json includes @eslint/eslintrc in devDependencies (required for the compat layer)
 
 Prettier config tests (generatePrettierRc):
+
 - Output is valid JSON
 - Sets singleQuote to true
 - Sets trailingComma to "all"
@@ -229,6 +239,7 @@ Prettier config tests (generatePrettierRc):
 - Sets semi to true
 
 .prettierignore tests (generatePrettierIgnore):
+
 - Includes node_modules for all frameworks
 - Includes coverage for all frameworks
 - nextjs-ts: includes .next and out
@@ -238,6 +249,7 @@ Prettier config tests (generatePrettierRc):
 - nextjs-ts output is different from react-vite-ts output (cross-framework isolation)
 
 Starter file tests:
+
 - react-vite-ts: App.tsx and main.tsx exist with correct content
 - nextjs-ts: app/layout.tsx and app/page.tsx exist with correct content
 - node-ts: index.ts exists with correct content

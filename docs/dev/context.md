@@ -15,6 +15,7 @@ The goal: build a tool or automation that scaffolds this entire workflow for any
 A Docker-based development container that runs inside VS Code. It provides an isolated sandbox where Claude Code can work autonomously without risk to the host machine.
 
 **Why it matters:**
+
 - Enables `--dangerously-skip-permissions` safely — Claude can read, write, and execute without approval prompts because the container is the sandbox
 - Reproducible environment — all tools and dependencies defined in code
 - If something breaks, rebuild in minutes
@@ -29,6 +30,7 @@ A Docker-based development container that runs inside VS Code. It provides an is
 ```
 
 **Key Dockerfile components:**
+
 - Base image: `node:20-bookworm-slim`
 - System tools: git, curl, ripgrep, fd-find, jq, tree, bat, zsh, python3
 - Claude Code: `npm install -g @anthropic-ai/claude-code`
@@ -36,6 +38,7 @@ A Docker-based development container that runs inside VS Code. It provides an is
 - Persistent command history directory
 
 **Key devcontainer.json components:**
+
 - VS Code extensions auto-installed: Claude Code, ESLint, Prettier, GitLens
 - Persistent volumes for bash history and Claude config (survive container rebuilds)
 - Port forwarding for the dev server (e.g., 5173 for Vite)
@@ -43,6 +46,7 @@ A Docker-based development container that runs inside VS Code. It provides an is
 - Format-on-save enabled with Prettier as default formatter
 
 **Authentication approach:**
+
 - Authenticate Claude Code on the host machine first (`npm install -g @anthropic-ai/claude-code && claude`)
 - Bind-mount the host's `~/.claude` directory into the container: `"source=${localEnv:HOME}/.claude,target=/home/node/.claude,type=bind"`
 - This avoids the known issue where Claude's OAuth login hangs in containers because the callback port isn't forwarded
@@ -74,6 +78,7 @@ CLAUDE.md                        ← Always loaded (every session). Keep under 1
 ```
 
 **CLAUDE.md rules (the most expensive real estate):**
+
 - Under 100 lines (ideally under 60)
 - Only universally applicable instructions
 - Essential bash commands (build, test, lint, dev server)
@@ -84,12 +89,14 @@ CLAUDE.md                        ← Always loaded (every session). Keep under 1
 - Never include: code style rules (let linters handle it), full architecture docs, historical context, anything that only matters sometimes
 
 **Context docs (docs/) rules:**
+
 - Each doc is self-contained and focused on one topic
 - Claude reads these on demand when CLAUDE.md points to them
 - They can be as long as needed — they only consume tokens when loaded
 - Write them in a way that gives Claude actionable instructions, not just information
 
 **Spec-driven development pattern:**
+
 - Each major feature gets a spec written in `docs/specs/` before implementation begins
 - The spec is written in one Claude Code session (use the interview pattern — "ask me hard questions about this feature, then write the spec")
 - Implementation happens in a fresh session that reads the spec
@@ -116,6 +123,7 @@ Test-driven development enforced through both CLAUDE.md instructions and determi
 **Why "do NOT modify the tests" is explicit:** Claude's default behavior is to write implementation first and tests second. TDD requires the inverse, and Claude must be explicitly told this every time.
 
 **Recommended test framework (for React/TypeScript projects):**
+
 - Vitest (fast, Vite-native)
 - @testing-library/react (component testing)
 - @testing-library/jest-dom (DOM assertions)
@@ -160,6 +168,7 @@ Shell commands that fire automatically at specific points in Claude Code's lifec
 ```
 
 **What each hook does:**
+
 - **PostToolUse (Edit|Write) → Prettier**: Auto-formats every file Claude edits. Runs after each edit, needs to be fast. The `exit 0` ensures it never blocks even if Prettier encounters an error.
 - **Stop → typecheck + test**: Runs the TypeScript type checker and full test suite when Claude finishes a task. Claude sees the output and can self-correct. The `exit 0` means failures are informational, not blocking.
 
@@ -174,6 +183,7 @@ Standard files that every project needs:
 **`.gitignore`** — node_modules, dist, .env, .DS_Store, .claude.json
 
 **`.env`** — API keys (never committed). Template:
+
 ```
 ANTHROPIC_API_KEY=
 # Add other service keys as needed
@@ -182,6 +192,7 @@ ANTHROPIC_API_KEY=
 **`README.md`** — Project overview with devcontainer setup instructions
 
 **`package.json`** — Scripts should include at minimum:
+
 ```json
 {
   "scripts": {
@@ -218,6 +229,7 @@ Given a project name and type (e.g., "React + Vite + TypeScript"), the tool shou
 13. **Formatter/linter** installed and configured (prettier, eslint)
 
 **Optional based on project type:**
+
 - React component structure (`src/components/`, `src/hooks/`)
 - API integration structure (`src/api/`)
 - Asset directories (`src/assets/`)
