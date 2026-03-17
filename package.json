@@ -1,0 +1,12 @@
+{
+  "name": "claude-scaffold",
+  "version": "1.0.0",
+  "description": "Generate a fully configured project directory for AI-first development with Claude Code",
+  "type": "module",
+  "bin": {
+    "claude-scaffold": "./bin/claude-scaffold.js"
+  },
+  "dependencies": {
+    "inquirer": "^9.2.12"
+  }
+}
