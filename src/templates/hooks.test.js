@@ -16,19 +16,25 @@ describe('generateClaudeSettings', () => {
     const settings = JSON.parse(generateClaudeSettings());
     const postToolUse = settings.hooks.PostToolUse;
     expect(postToolUse).toBeDefined();
-    expect(postToolUse.some((entry) => entry.matcher === 'Edit|Write')).toBe(true);
+    expect(postToolUse.some((entry) => entry.matcher === 'Edit|Write')).toBe(
+      true,
+    );
   });
 
   it('PostToolUse hook command includes prettier --write', () => {
     const settings = JSON.parse(generateClaudeSettings());
-    const entry = settings.hooks.PostToolUse.find((e) => e.matcher === 'Edit|Write');
+    const entry = settings.hooks.PostToolUse.find(
+      (e) => e.matcher === 'Edit|Write',
+    );
     const command = entry.hooks[0].command;
     expect(command).toContain('prettier --write');
   });
 
   it('PostToolUse hook command ends with exit 0', () => {
     const settings = JSON.parse(generateClaudeSettings());
-    const entry = settings.hooks.PostToolUse.find((e) => e.matcher === 'Edit|Write');
+    const entry = settings.hooks.PostToolUse.find(
+      (e) => e.matcher === 'Edit|Write',
+    );
     const command = entry.hooks[0].command;
     expect(command.trimEnd()).toMatch(/exit 0$/);
   });

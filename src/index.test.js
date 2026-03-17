@@ -233,9 +233,7 @@ describe('run (orchestrator)', () => {
     await run();
 
     const root = join(tempDir, config.projectName);
-    expect(await fileExists(join(root, 'docs/api-integration.md'))).toBe(
-      false,
-    );
+    expect(await fileExists(join(root, 'docs/api-integration.md'))).toBe(false);
   });
 
   it('.env.example content matches .env content', async () => {

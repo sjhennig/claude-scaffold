@@ -24,31 +24,31 @@ describe('validateProjectName', () => {
 
   it('rejects uppercase letters', () => {
     expect(validateProjectName('MyProject')).toBe(
-      'Must be kebab-case (lowercase letters, numbers, hyphens).'
+      'Must be kebab-case (lowercase letters, numbers, hyphens).',
     );
   });
 
   it('rejects spaces', () => {
     expect(validateProjectName('my project')).toBe(
-      'Must be kebab-case (lowercase letters, numbers, hyphens).'
+      'Must be kebab-case (lowercase letters, numbers, hyphens).',
     );
   });
 
   it('rejects underscores', () => {
     expect(validateProjectName('my_project')).toBe(
-      'Must be kebab-case (lowercase letters, numbers, hyphens).'
+      'Must be kebab-case (lowercase letters, numbers, hyphens).',
     );
   });
 
   it('rejects special characters', () => {
     expect(validateProjectName('my@project')).toBe(
-      'Must be kebab-case (lowercase letters, numbers, hyphens).'
+      'Must be kebab-case (lowercase letters, numbers, hyphens).',
     );
   });
 
   it('rejects names starting with a number', () => {
     expect(validateProjectName('1project')).toBe(
-      'Must be kebab-case (lowercase letters, numbers, hyphens).'
+      'Must be kebab-case (lowercase letters, numbers, hyphens).',
     );
   });
 

@@ -1,5 +1,8 @@
 import { describe, it, expect } from 'vitest';
-import { generateDockerfile, generateDevcontainerJson } from './devcontainer.js';
+import {
+  generateDockerfile,
+  generateDevcontainerJson,
+} from './devcontainer.js';
 
 const baseConfig = {
   projectName: 'test-project',
@@ -23,7 +26,17 @@ describe('generateDockerfile', () => {
 
   it('installs all expected system tools', () => {
     const dockerfile = generateDockerfile();
-    const expectedTools = ['git', 'curl', 'ripgrep', 'fd-find', 'jq', 'tree', 'bat', 'zsh', 'python3'];
+    const expectedTools = [
+      'git',
+      'curl',
+      'ripgrep',
+      'fd-find',
+      'jq',
+      'tree',
+      'bat',
+      'zsh',
+      'python3',
+    ];
     for (const tool of expectedTools) {
       expect(dockerfile).toContain(tool);
     }
@@ -57,7 +70,9 @@ describe('generateDevcontainerJson', () => {
   });
 
   it('forwards a different port when configured', () => {
-    const result = JSON.parse(generateDevcontainerJson(withConfig({ devPort: 3000 })));
+    const result = JSON.parse(
+      generateDevcontainerJson(withConfig({ devPort: 3000 })),
+    );
     expect(result.forwardPorts).toEqual([3000]);
   });
 

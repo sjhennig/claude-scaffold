@@ -41,7 +41,9 @@ function withConfig(overrides) {
 
 describe('generateEslintConfig', () => {
   it('returns different configs per framework', () => {
-    const react = generateEslintConfig(withConfig({ framework: 'react-vite-ts' }));
+    const react = generateEslintConfig(
+      withConfig({ framework: 'react-vite-ts' }),
+    );
     const next = generateEslintConfig(withConfig({ framework: 'nextjs-ts' }));
     const node = generateEslintConfig(withConfig({ framework: 'node-ts' }));
 
@@ -91,7 +93,9 @@ describe('generateEslintConfig', () => {
 
     it('is generated as .mjs in getFrameworkFiles', () => {
       const files = getFrameworkFiles(config);
-      const eslintEntry = files.find(([path]) => path.includes('eslint.config'));
+      const eslintEntry = files.find(([path]) =>
+        path.includes('eslint.config'),
+      );
       expect(eslintEntry).toBeDefined();
       expect(eslintEntry[0]).toBe('eslint.config.mjs');
     });
@@ -120,7 +124,9 @@ describe('generateEslintConfig', () => {
 
     it('is generated as .js (not .mjs) in getFrameworkFiles', () => {
       const files = getFrameworkFiles(config);
-      const eslintEntry = files.find(([path]) => path.includes('eslint.config'));
+      const eslintEntry = files.find(([path]) =>
+        path.includes('eslint.config'),
+      );
       expect(eslintEntry[0]).toBe('eslint.config.js');
     });
   });
@@ -178,7 +184,9 @@ describe('generatePrettierIgnore', () => {
   });
 
   describe('nextjs-ts', () => {
-    const output = generatePrettierIgnore(withConfig({ framework: 'nextjs-ts' }));
+    const output = generatePrettierIgnore(
+      withConfig({ framework: 'nextjs-ts' }),
+    );
 
     it('includes .next', () => {
       expect(output).toContain('.next');
@@ -198,7 +206,9 @@ describe('generatePrettierIgnore', () => {
   });
 
   describe('react-vite-ts', () => {
-    const output = generatePrettierIgnore(withConfig({ framework: 'react-vite-ts' }));
+    const output = generatePrettierIgnore(
+      withConfig({ framework: 'react-vite-ts' }),
+    );
 
     it('does not include .next', () => {
       expect(output).not.toContain('.next');
@@ -211,14 +221,20 @@ describe('generatePrettierIgnore', () => {
 
   describe('cross-framework isolation', () => {
     it('node-ts does not include .next or out', () => {
-      const output = generatePrettierIgnore(withConfig({ framework: 'node-ts' }));
+      const output = generatePrettierIgnore(
+        withConfig({ framework: 'node-ts' }),
+      );
       expect(output).not.toContain('.next');
       expect(output).not.toMatch(/^out$/m);
     });
 
     it('nextjs-ts prettierignore is different from react-vite-ts', () => {
-      const next = generatePrettierIgnore(withConfig({ framework: 'nextjs-ts' }));
-      const react = generatePrettierIgnore(withConfig({ framework: 'react-vite-ts' }));
+      const next = generatePrettierIgnore(
+        withConfig({ framework: 'nextjs-ts' }),
+      );
+      const react = generatePrettierIgnore(
+        withConfig({ framework: 'react-vite-ts' }),
+      );
       expect(next).not.toBe(react);
     });
   });
@@ -229,7 +245,16 @@ describe('generatePrettierIgnore', () => {
 // ---------------------------------------------------------------------------
 
 describe('generatePackageJson', () => {
-  const requiredScripts = ['dev', 'build', 'test', 'test:watch', 'lint', 'lint:fix', 'typecheck', 'format'];
+  const requiredScripts = [
+    'dev',
+    'build',
+    'test',
+    'test:watch',
+    'lint',
+    'lint:fix',
+    'typecheck',
+    'format',
+  ];
 
   for (const framework of ['react-vite-ts', 'nextjs-ts', 'node-ts']) {
     describe(framework, () => {
@@ -257,7 +282,9 @@ describe('generatePackageJson', () => {
   }
 
   describe('react-vite-ts specifics', () => {
-    const pkg = JSON.parse(generatePackageJson(withConfig({ framework: 'react-vite-ts' })));
+    const pkg = JSON.parse(
+      generatePackageJson(withConfig({ framework: 'react-vite-ts' })),
+    );
 
     it('scripts.dev is vite', () => {
       expect(pkg.scripts.dev).toBe('vite');
@@ -273,7 +300,9 @@ describe('generatePackageJson', () => {
   });
 
   describe('nextjs-ts specifics', () => {
-    const pkg = JSON.parse(generatePackageJson(withConfig({ framework: 'nextjs-ts' })));
+    const pkg = JSON.parse(
+      generatePackageJson(withConfig({ framework: 'nextjs-ts' })),
+    );
 
     it('scripts.dev is next dev', () => {
       expect(pkg.scripts.dev).toBe('next dev');
@@ -289,7 +318,9 @@ describe('generatePackageJson', () => {
   });
 
   describe('node-ts specifics', () => {
-    const pkg = JSON.parse(generatePackageJson(withConfig({ framework: 'node-ts' })));
+    const pkg = JSON.parse(
+      generatePackageJson(withConfig({ framework: 'node-ts' })),
+    );
 
     it('scripts.dev is tsx watch src/index.ts', () => {
       expect(pkg.scripts.dev).toBe('tsx watch src/index.ts');
@@ -314,7 +345,9 @@ describe('generateTsConfig', () => {
   }
 
   describe('react-vite-ts', () => {
-    const tsconfig = JSON.parse(generateTsConfig(withConfig({ framework: 'react-vite-ts' })));
+    const tsconfig = JSON.parse(
+      generateTsConfig(withConfig({ framework: 'react-vite-ts' })),
+    );
 
     it('has jsx set to react-jsx', () => {
       expect(tsconfig.compilerOptions.jsx).toBe('react-jsx');
@@ -326,7 +359,9 @@ describe('generateTsConfig', () => {
   });
 
   describe('nextjs-ts', () => {
-    const tsconfig = JSON.parse(generateTsConfig(withConfig({ framework: 'nextjs-ts' })));
+    const tsconfig = JSON.parse(
+      generateTsConfig(withConfig({ framework: 'nextjs-ts' })),
+    );
 
     it('has jsx set to preserve', () => {
       expect(tsconfig.compilerOptions.jsx).toBe('preserve');
@@ -345,7 +380,9 @@ describe('generateTsConfig', () => {
   });
 
   describe('node-ts', () => {
-    const tsconfig = JSON.parse(generateTsConfig(withConfig({ framework: 'node-ts' })));
+    const tsconfig = JSON.parse(
+      generateTsConfig(withConfig({ framework: 'node-ts' })),
+    );
 
     it('has outDir set to ./dist', () => {
       expect(tsconfig.compilerOptions.outDir).toBe('./dist');
@@ -399,7 +436,9 @@ describe('generateGitignore', () => {
   });
 
   it('react-vite-ts does NOT include .next/', () => {
-    const output = generateGitignore(withConfig({ framework: 'react-vite-ts' }));
+    const output = generateGitignore(
+      withConfig({ framework: 'react-vite-ts' }),
+    );
     expect(output).not.toContain('.next/');
   });
 });
@@ -420,7 +459,9 @@ describe('generateEnv', () => {
   });
 
   it('includes additional keys from additionalKeys', () => {
-    const output = generateEnv(withConfig({ additionalKeys: ['MY_KEY', 'OTHER_KEY'] }));
+    const output = generateEnv(
+      withConfig({ additionalKeys: ['MY_KEY', 'OTHER_KEY'] }),
+    );
     expect(output).toContain('MY_KEY=');
     expect(output).toContain('OTHER_KEY=');
   });

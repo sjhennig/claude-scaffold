@@ -53,9 +53,7 @@ describe('generateClaudeMd', () => {
 
   it('contains the instruction to read docs/ before starting tasks', () => {
     const output = generateClaudeMd(baseConfig);
-    expect(output).toContain(
-      'IMPORTANT: Before starting any task',
-    );
+    expect(output).toContain('IMPORTANT: Before starting any task');
     expect(output).toContain('docs/');
   });
 

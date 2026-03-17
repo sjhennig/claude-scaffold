@@ -235,12 +235,7 @@ const tsconfigByFramework = {
         plugins: [{ name: 'next' }],
         paths: { '@/*': ['./src/*'] },
       },
-      include: [
-        'next-env.d.ts',
-        '**/*.ts',
-        '**/*.tsx',
-        '.next/types/**/*.ts',
-      ],
+      include: ['next-env.d.ts', '**/*.ts', '**/*.tsx', '.next/types/**/*.ts'],
       exclude: ['node_modules'],
     };
     return JSON.stringify(tsconfig, null, 2) + '\n';

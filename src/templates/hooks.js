@@ -52,9 +52,7 @@ export function generateClaudeSettings() {
         'Bash(grep:*)',
         'Bash(sort:*)',
       ],
-      deny: [
-        'Bash(sudo:*)',
-      ],
+      deny: ['Bash(sudo:*)'],
     },
     hooks: {
       PostToolUse: [

@@ -41,7 +41,9 @@ describe('generateProjectBrief', () => {
 
 describe('generateArchitecture', () => {
   it('includes components/ directory for react-vite-ts framework', () => {
-    const result = generateArchitecture(withConfig({ framework: 'react-vite-ts' }));
+    const result = generateArchitecture(
+      withConfig({ framework: 'react-vite-ts' }),
+    );
     expect(result).toContain('components/');
   });
 
