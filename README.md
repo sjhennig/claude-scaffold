@@ -155,6 +155,7 @@ The tool is structured so new frameworks can be added without changing the orche
 3. Add deps/scripts to `packagesByFramework` in `src/templates/project-files.js`
 4. Add a case to `getFrameworkFiles()` and `getFrameworkDirs()` in `src/templates/project-files.js`
 5. Add a directory tree to `directoryTree()` in `src/templates/docs.js`
+6. Add an ESLint config variant to `generateEslintConfig()` in `src/templates/project-files.js` if the framework needs custom lint rules or plugin configuration
 
 ## Development
 
