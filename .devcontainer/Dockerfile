@@ -1,7 +1,10 @@
 FROM node:20-bookworm-slim
 
-# Install dev tools
+# Install dev tools.
+# ca-certificates first: the slim base omits it, which breaks HTTPS for git,
+# curl, and the github-cli devcontainer feature's keyring fetch.
 RUN apt-get update && apt-get install -y --no-install-recommends \
+    ca-certificates \
     git \
     curl \
     ripgrep \
