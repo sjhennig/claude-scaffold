@@ -23,8 +23,9 @@ src/
     claude-md.js    CLAUDE.md generation
     devcontainer.js Dockerfile + devcontainer.json
     docs.js         Project documentation templates
-    hooks.js        .claude/settings.json with permissions + hooks
-    project-files.js Framework-specific configs and source
+    guardrails.js   Framework-agnostic core: settings.json + hook scripts
+    hooks.js        .claude/commands README (re-exports guardrails settings)
+    project-files.js Framework configs/source (incl. 'none' = guardrails only)
 .claude/            Claude Code settings, hooks, and agents
 .devcontainer/      Dev container for sandboxed development
 docs/               Architecture and planning documents

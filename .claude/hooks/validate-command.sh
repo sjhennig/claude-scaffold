@@ -3,6 +3,9 @@
 # Receives JSON on stdin with .tool_input.command field.
 # Exit 0 = allow, Exit 2 = block (reason sent to stderr).
 
+# Fail open if jq is unavailable so we never break every Bash call.
+command -v jq >/dev/null 2>&1 || exit 0
+
 INPUT=$(cat)
 COMMAND=$(echo "$INPUT" | jq -r '.tool_input.command // empty')
 

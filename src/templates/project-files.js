@@ -3,6 +3,8 @@
  * .env, README, and index.html for the scaffolded project.
  */
 
+import { VERIFY_SCRIPT_TS, VERIFY_SCRIPT_JS } from './guardrails.js';
+
 // ---------------------------------------------------------------------------
 // package.json
 // ---------------------------------------------------------------------------
@@ -19,6 +21,8 @@ const packagesByFramework = {
       'lint:fix': 'eslint . --fix',
       typecheck: 'tsc -b',
       format: 'prettier --write "src/**/*.{ts,tsx,css}"',
+      'format:check': 'prettier --check "src/**/*.{ts,tsx,css}"',
+      verify: VERIFY_SCRIPT_TS,
     },
     dependencies: {
       react: '^19.0.0',
@@ -55,6 +59,9 @@ const packagesByFramework = {
       'lint:fix': 'next lint --fix',
       typecheck: 'npx tsc --noEmit',
       format: "prettier --write 'src/**/*.{ts,tsx}' 'app/**/*.{ts,tsx}'",
+      'format:check':
+        "prettier --check 'src/**/*.{ts,tsx}' 'app/**/*.{ts,tsx}'",
+      verify: VERIFY_SCRIPT_TS,
     },
     dependencies: {
       next: '^15.0.0',
@@ -90,6 +97,8 @@ const packagesByFramework = {
       'lint:fix': 'eslint src/ --fix',
       typecheck: 'npx tsc --noEmit',
       format: 'prettier --write src/',
+      'format:check': 'prettier --check src/',
+      verify: VERIFY_SCRIPT_TS,
     },
     dependencies: {},
     devDependencies: {
@@ -101,6 +110,28 @@ const packagesByFramework = {
       tsx: '^4.0.0',
       typescript: '~5.7.0',
       'typescript-eslint': '^8.0.0',
+      vitest: '^3.0.0',
+    },
+  },
+  // Guardrails-only: minimal plain-JS project that exists purely to carry the
+  // guardrail layer + context network. No framework, no TypeScript.
+  none: {
+    type: 'module',
+    scripts: {
+      test: 'vitest run',
+      'test:watch': 'vitest',
+      lint: 'eslint src/',
+      'lint:fix': 'eslint src/ --fix',
+      format: 'prettier --write src/',
+      'format:check': 'prettier --check src/',
+      verify: VERIFY_SCRIPT_JS,
+    },
+    dependencies: {},
+    devDependencies: {
+      '@eslint/js': '^9.0.0',
+      eslint: '^9.0.0',
+      globals: '^15.0.0',
+      prettier: '^3.4.0',
       vitest: '^3.0.0',
     },
   },
@@ -172,6 +203,14 @@ export default defineConfig({
 });
 `,
   'node-ts': () => `import { defineConfig } from 'vitest/config';
+
+export default defineConfig({
+  test: {
+    reporters: ['verbose'],
+  },
+});
+`,
+  none: () => `import { defineConfig } from 'vitest/config';
 
 export default defineConfig({
   test: {
@@ -374,6 +413,23 @@ export function generateNodeIndex(config) {
 }
 
 // ---------------------------------------------------------------------------
+// Source files — Guardrails only (no framework)
+// ---------------------------------------------------------------------------
+
+export function generateSmokeTest() {
+  return `import { describe, it, expect } from 'vitest';
+
+// Starter test so the verification gate has something to run on day one.
+// Replace this with real tests as you add code under src/.
+describe('smoke', () => {
+  it('runs the test suite', () => {
+    expect(true).toBe(true);
+  });
+});
+`;
+}
+
+// ---------------------------------------------------------------------------
 // index.html (React + Vite only)
 // ---------------------------------------------------------------------------
 
@@ -430,6 +486,19 @@ coverage/
 `,
   'node-ts': `node_modules
 dist/
+.env
+.env.local
+.env.*.local
+.DS_Store
+Thumbs.db
+.vscode/*
+!.vscode/extensions.json
+*.swp
+*.swo
+.claude.json
+coverage/
+`,
+  none: `node_modules
 .env
 .env.local
 .env.*.local
@@ -516,6 +585,21 @@ export default tseslint.config(
   },
 );
 `,
+  none: () => `import js from '@eslint/js';
+import globals from 'globals';
+
+export default [
+  js.configs.recommended,
+  {
+    languageOptions: {
+      ecmaVersion: 2022,
+      sourceType: 'module',
+      globals: { ...globals.node },
+    },
+  },
+  { ignores: ['node_modules/', 'coverage/'] },
+];
+`,
 };
 
 export function generateEslintConfig(config) {
@@ -556,6 +640,9 @@ coverage
 dist
 coverage
 `,
+  none: `node_modules
+coverage
+`,
 };
 
 export function generatePrettierIgnore(config) {
@@ -591,6 +678,8 @@ const devInstructionsByFramework = {
     `Start the dev server: \`npm run dev\`, open http://localhost:${config.devPort}`,
   'node-ts': () =>
     'Start in watch mode: `npm run dev` (restarts on file changes)',
+  none: () =>
+    'Add your code under `src/` and run `npm run verify` to check it (format + lint + tests)',
 };
 
 const projectTreeByFramework = {
@@ -635,6 +724,15 @@ const projectTreeByFramework = {
 │   └── index.ts        ← Entry point
 ├── CLAUDE.md           ← Claude Code instructions
 └── package.json`,
+  none: (name) => `${name}/
+├── .claude/            ← Claude Code settings and hooks
+├── .devcontainer/      ← Docker devcontainer config
+├── docs/               ← Project context documents
+│   └── specs/          ← Feature specifications
+├── src/                ← Your code (add files here)
+│   └── smoke.test.js   ← Starter test
+├── CLAUDE.md           ← Claude Code instructions
+└── package.json`,
 };
 
 export function generateReadme(config) {
@@ -666,7 +764,7 @@ This project is set up for AI-first development with Claude Code:
 - **\`CLAUDE.md\`** — Quick-reference card Claude reads every session (commands, workflow, conventions)
 - **\`docs/\`** — Detailed context documents Claude reads as needed
 - **\`docs/specs/\`** — Feature specs written before implementation
-- **\`.claude/settings.json\`** — Sensible default permissions and hooks. Safe operations (file edits, local git, running tests) are auto-approved. Destructive or external-facing actions (rm, git push, npm install) still require manual approval. Hooks auto-format edited files and run typecheck + tests when Claude finishes a task.
+- **\`.claude/settings.json\`** — Sensible default permissions, sandbox, and hooks. Safe operations (file edits, local git, running tests) are auto-approved. Destructive or external-facing actions (rm, git push, npm install) still require manual approval. Hooks auto-format edited files, block dangerous shell commands, and run \`npm run verify\` when Claude finishes a task — **blocking turn-end until it passes**.
 
 ## Project Structure
 
@@ -724,6 +822,16 @@ export function getFrameworkFiles(config) {
         ['src/index.ts', generateNodeIndex(config)],
       ];
 
+    case 'none':
+      return [
+        ['package.json', generatePackageJson(config)],
+        ['vitest.config.js', generateVitestConfig(config)],
+        ['eslint.config.js', generateEslintConfig(config)],
+        ['.prettierrc', generatePrettierRc()],
+        ['.prettierignore', generatePrettierIgnore(config)],
+        ['src/smoke.test.js', generateSmokeTest()],
+      ];
+
     default:
       throw new Error(`Unknown framework: ${config.framework}`);
   }
@@ -750,6 +858,9 @@ export function getFrameworkDirs(config) {
       ];
     case 'node-ts':
       return ['src/utils', 'src/types'];
+    case 'none':
+      // src/ already gets src/smoke.test.js, so no empty dirs to seed.
+      return [];
     default:
       throw new Error(`Unknown framework: ${config.framework}`);
   }

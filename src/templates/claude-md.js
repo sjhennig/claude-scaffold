@@ -3,41 +3,38 @@
  * Must stay under 100 lines. Details belong in docs/.
  */
 
-const commandsByFramework = {
-  'react-vite-ts': {
-    dev: 'npm run dev',
-    build: 'npm run build',
-    test: 'npm test',
-    testWatch: 'npm run test:watch',
-    lint: 'npm run lint',
-    lintFix: 'npm run lint:fix',
-    typecheck: 'npm run typecheck',
-    format: 'npm run format',
-  },
-  'nextjs-ts': {
-    dev: 'npm run dev',
-    build: 'npm run build',
-    test: 'npm test',
-    testWatch: 'npm run test:watch',
-    lint: 'npm run lint',
-    lintFix: 'npm run lint:fix',
-    typecheck: 'npm run typecheck',
-    format: 'npm run format',
-  },
-  'node-ts': {
-    dev: 'npm run dev',
-    build: 'npm run build',
-    test: 'npm test',
-    testWatch: 'npm run test:watch',
-    lint: 'npm run lint',
-    lintFix: 'npm run lint:fix',
-    typecheck: 'npm run typecheck',
-    format: 'npm run format',
-  },
-};
+// Commands are identical across the TypeScript frameworks; the only variation
+// is that the no-framework option has no dev server, build step, or typecheck.
+function commandRows(framework) {
+  const appRows =
+    framework === 'none'
+      ? []
+      : [
+          ['Dev server', 'npm run dev'],
+          ['Build', 'npm run build'],
+        ];
+
+  const typecheckRow =
+    framework === 'none' ? [] : [['Typecheck', 'npm run typecheck']];
+  const lintFixRow =
+    framework === 'none' ? [] : [['Lint fix', 'npm run lint:fix']];
+
+  return [
+    ['Verify (gate)', 'npm run verify'],
+    ...appRows,
+    ['Test', 'npm test'],
+    ['Test watch', 'npm run test:watch'],
+    ['Lint', 'npm run lint'],
+    ...lintFixRow,
+    ...typecheckRow,
+    ['Format', 'npm run format'],
+  ];
+}
 
 export function generateClaudeMd(config) {
-  const cmds = commandsByFramework[config.framework];
+  const rows = commandRows(config.framework)
+    .map(([action, cmd]) => `| ${action.padEnd(13)} | \`${cmd}\` |`)
+    .join('\n');
 
   return `# ${config.projectName}
 
@@ -45,16 +42,11 @@ ${config.description}
 
 ## Commands
 
-| Action     | Command             |
-|------------|---------------------|
-| Dev server | \`${cmds.dev}\`       |
-| Build      | \`${cmds.build}\`     |
-| Test       | \`${cmds.test}\`      |
-| Test watch | \`${cmds.testWatch}\` |
-| Lint       | \`${cmds.lint}\`      |
-| Lint fix   | \`${cmds.lintFix}\`   |
-| Typecheck  | \`${cmds.typecheck}\` |
-| Format     | \`${cmds.format}\`    |
+| Action        | Command |
+| ------------- | ------- |
+${rows}
+
+\`npm run verify\` runs the same gate the Stop hook enforces (format + lint + tests). The hook blocks turn-end until it passes.
 
 ## Project Structure
 
@@ -73,6 +65,10 @@ IMPORTANT: Before starting any task, identify which docs below are relevant and 
 - \`docs/architecture.md\` — System design, directory layout, key patterns
 - \`docs/specs/\` — Feature specs; read the relevant spec before implementing
 
+## Rules
+
+- **Evidence before claims**: run \`npm run verify\` and show the output before asserting a change works. Do not claim success you have not observed.
+
 ## Git Workflow
 
 - Feature branches off \`main\`
@@ -90,5 +86,9 @@ IMPORTANT: Before starting any task, identify which docs below are relevant and 
 7. Commit passing implementation.
 
 Tests live next to the code they test: \`foo.ts\` → \`foo.test.ts\`
+
+## On Compaction
+
+When compacting, always preserve: the list of modified files, the test/verify commands and their last output, and any open decisions or unresolved issues.
 `;
 }

@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { mkdtemp, rm, readFile, access, readdir } from 'fs/promises';
+import { mkdtemp, rm, readFile, access, readdir, stat } from 'fs/promises';
 import { join } from 'path';
 import { tmpdir } from 'os';
 
@@ -216,6 +216,57 @@ describe('run (orchestrator)', () => {
     for (const dir of expectedDirs) {
       expect(await fileExists(join(root, dir, '.gitkeep'))).toBe(true);
     }
+  });
+
+  it('emits both guardrail hook scripts as executable files', async () => {
+    const config = withConfig({});
+    gatherInput.mockResolvedValue(config);
+    await run();
+
+    const root = join(tempDir, config.projectName);
+    for (const script of [
+      '.claude/hooks/validate-command.sh',
+      '.claude/hooks/verify-gate.sh',
+    ]) {
+      const full = join(root, script);
+      expect(await fileExists(full)).toBe(true);
+      const mode = (await stat(full)).mode;
+      // owner-execute bit set
+      expect(mode & 0o100).toBe(0o100);
+    }
+  });
+
+  it('creates the expected files for the no-framework (none) option', async () => {
+    const config = withConfig({ framework: 'none', devPort: undefined });
+    gatherInput.mockResolvedValue(config);
+    await run();
+
+    const root = join(tempDir, config.projectName);
+    const expectedFiles = [
+      '.devcontainer/devcontainer.json',
+      'CLAUDE.md',
+      '.claude/settings.json',
+      '.claude/hooks/validate-command.sh',
+      '.claude/hooks/verify-gate.sh',
+      'package.json',
+      'eslint.config.js',
+      '.prettierrc',
+      '.prettierignore',
+      'vitest.config.js',
+      'src/smoke.test.js',
+    ];
+    for (const file of expectedFiles) {
+      expect(await fileExists(join(root, file))).toBe(true);
+    }
+
+    // No framework source or TS config
+    expect(await fileExists(join(root, 'tsconfig.json'))).toBe(false);
+    expect(await fileExists(join(root, 'vite.config.ts'))).toBe(false);
+    expect(await fileExists(join(root, 'index.html'))).toBe(false);
+
+    // package.json exposes the verify contract the Stop gate depends on
+    const pkg = JSON.parse(await readFile(join(root, 'package.json'), 'utf-8'));
+    expect(pkg.scripts).toHaveProperty('verify');
   });
 
   it('includes docs/api-integration.md when useAnthropicApi is true', async () => {

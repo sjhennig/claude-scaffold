@@ -39,7 +39,8 @@ export function generateDevcontainerJson(config) {
     build: {
       dockerfile: 'Dockerfile',
     },
-    forwardPorts: [config.devPort],
+    // No dev server (e.g. the no-framework option) → nothing to forward.
+    ...(config.devPort ? { forwardPorts: [config.devPort] } : {}),
     customizations: {
       vscode: {
         extensions: [
