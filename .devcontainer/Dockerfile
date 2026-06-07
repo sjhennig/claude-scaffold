@@ -13,7 +13,10 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     sudo \
     && rm -rf /var/lib/apt/lists/*
 
-# Allow node user to use sudo without password
+# Allow the human developer to use sudo without a password (e.g. ad-hoc
+# apt-get installs while iterating in the container). Claude itself cannot
+# escalate: `Bash(sudo:*)` is in the permissions deny-list in
+# .claude/settings.json, so the agent is blocked from sudo regardless.
 RUN echo "node ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers.d/node
 
 # Install Claude Code CLI globally
@@ -27,4 +30,4 @@ RUN SNIPPET="export PROMPT_COMMAND='history -a' && export HISTFILE=/commandhisto
     && echo "$SNIPPET" >> /home/node/.bashrc
 
 USER node
-WORKDIR /workspace
+WORKDIR /workspaces/claude-scaffold

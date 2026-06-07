@@ -35,7 +35,11 @@
       "Bash(sort:*)"
     ],
     "deny": [
-      "Bash(sudo:*)"
+      "Bash(sudo:*)",
+      "Read(./.env)",
+      "Read(./.env.*)",
+      "Read(~/.ssh/**)",
+      "Read(~/.aws/credentials)"
     ]
   },
   "hooks": {
@@ -86,8 +90,8 @@
       "allowedDomains": [
         "registry.npmjs.org",
         "github.com"
-      ]
-    },
-    "allowUnixSockets": []
+      ],
+      "allowUnixSockets": []
+    }
   }
 }

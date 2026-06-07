@@ -11,17 +11,24 @@ if [ -z "$COMMAND" ]; then
   exit 0
 fi
 
-# Denylist: patterns that should never run
+# Denylist: extended-regex patterns that should never run.
+# Patterns err on the side of safety but avoid blocking benign subpaths
+# (e.g. `rm -rf /tmp/foo` is allowed; `rm -rf /` and system dirs are not).
 declare -a DENY_PATTERNS=(
-  'rm -rf /'
-  'rm -rf ~'
-  'rm -rf \$HOME'
-  'git push.*--force'
-  'git push.*-f '
-  'chmod -R 777'
+  # Recursive/force delete of filesystem root or root glob
+  'rm[[:space:]]+-[rf]+[[:space:]]+/([[:space:]]|$|\*)'
+  # Recursive/force delete of a critical system directory
+  'rm[[:space:]]+-[rf]+[[:space:]]+/(bin|boot|dev|etc|lib|proc|root|sbin|sys|usr|var)([[:space:]/]|$)'
+  # Recursive/force delete of the home directory
+  'rm[[:space:]]+-[rf]+[[:space:]]+(~|\$HOME)([[:space:]/]|$)'
+  # Force push, any flag ordering, mid-line or end-of-line
+  'git[[:space:]]+push.*(--force|[[:space:]]-[a-zA-Z]*f)([[:space:]]|$)'
+  # World-writable recursive chmod
+  'chmod[[:space:]]+-R[[:space:]]+777'
+  # Filesystem creation
   'mkfs\.'
-  '> /etc/'
-  '> /usr/'
+  # Redirect into a system directory
+  '>[[:space:]]*/(bin|boot|etc|lib|sbin|sys|usr)/'
 )
 
 for pattern in "${DENY_PATTERNS[@]}"; do
