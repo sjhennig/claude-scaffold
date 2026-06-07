@@ -1,4 +1,4 @@
-import { mkdir, writeFile } from 'node:fs/promises';
+import { mkdir, writeFile, chmod } from 'node:fs/promises';
 import { join, dirname } from 'node:path';
 import { execSync } from 'node:child_process';
 import { gatherInput } from './prompts.js';
@@ -7,10 +7,12 @@ import {
   generateDevcontainerJson,
 } from './templates/devcontainer.js';
 import { generateClaudeMd } from './templates/claude-md.js';
+import { generateCommandsReadme } from './templates/hooks.js';
 import {
   generateClaudeSettings,
-  generateCommandsReadme,
-} from './templates/hooks.js';
+  generateValidateCommandScript,
+  generateVerifyGateScript,
+} from './templates/guardrails.js';
 import {
   generateProjectBrief,
   generateArchitecture,
@@ -58,9 +60,11 @@ export async function run() {
     ['.devcontainer/Dockerfile', generateDockerfile()],
     ['.devcontainer/devcontainer.json', generateDevcontainerJson(config)],
 
-    // Claude Code
+    // Claude Code — guardrail core (framework-agnostic)
     ['CLAUDE.md', generateClaudeMd(config)],
     ['.claude/settings.json', generateClaudeSettings()],
+    ['.claude/hooks/validate-command.sh', generateValidateCommandScript()],
+    ['.claude/hooks/verify-gate.sh', generateVerifyGateScript()],
     ['.claude/commands/README.md', generateCommandsReadme()],
 
     // Docs
@@ -89,6 +93,15 @@ export async function run() {
 
   for (const [relativePath, content] of files) {
     await writeProjectFile(root, relativePath, content);
+  }
+
+  // Hook scripts must be executable. (Hooks invoke them via `bash`, so this is
+  // ergonomics, not a hard requirement — and a no-op on Windows.)
+  for (const hookScript of [
+    '.claude/hooks/validate-command.sh',
+    '.claude/hooks/verify-gate.sh',
+  ]) {
+    await chmod(join(root, hookScript), 0o755);
   }
 
   // -- Create empty directories (with .gitkeep so git tracks them) ---------

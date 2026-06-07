@@ -4,6 +4,7 @@ const FRAMEWORKS = [
   { name: 'React + Vite + TypeScript', value: 'react-vite-ts' },
   { name: 'Next.js + TypeScript', value: 'nextjs-ts' },
   { name: 'Node + TypeScript (no frontend)', value: 'node-ts' },
+  { name: 'Guardrails only (no framework)', value: 'none' },
 ];
 
 const DEFAULT_PORTS = {
@@ -40,6 +41,8 @@ const questions = [
     type: 'number',
     name: 'devPort',
     message: 'Dev server port:',
+    // The no-framework option has no dev server.
+    when: (answers) => answers.framework !== 'none',
     default: (answers) => DEFAULT_PORTS[answers.framework] ?? 3000,
   },
   {

@@ -49,7 +49,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash .claude/hooks/validate-command.sh"
+            "command": "bash \"$CLAUDE_PROJECT_DIR/.claude/hooks/validate-command.sh\""
           }
         ]
       }
@@ -70,7 +70,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "npm run verify 2>&1 | tail -50"
+            "command": "bash \"$CLAUDE_PROJECT_DIR/.claude/hooks/verify-gate.sh\""
           }
         ]
       }

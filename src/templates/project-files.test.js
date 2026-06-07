@@ -592,3 +592,45 @@ describe('starter files', () => {
     });
   });
 });
+
+// ---------------------------------------------------------------------------
+// Guardrails-only (no framework)
+// ---------------------------------------------------------------------------
+
+describe('none (guardrails only)', () => {
+  const config = withConfig({ framework: 'none', devPort: undefined });
+
+  it('package.json exposes the verify contract but omits TS-only scripts', () => {
+    const pkg = JSON.parse(generatePackageJson(config));
+    expect(pkg.scripts).toHaveProperty('verify');
+    expect(pkg.scripts).toHaveProperty('test');
+    expect(pkg.scripts).toHaveProperty('format:check');
+    expect(pkg.scripts).not.toHaveProperty('typecheck');
+    expect(pkg.scripts).not.toHaveProperty('build');
+  });
+
+  it('verify does not include typecheck (plain JS)', () => {
+    const pkg = JSON.parse(generatePackageJson(config));
+    expect(pkg.scripts.verify).not.toContain('typecheck');
+  });
+
+  it('emits a JS vitest config and a smoke test, no tsconfig', () => {
+    const paths = getFrameworkFiles(config).map(([p]) => p);
+    expect(paths).toContain('vitest.config.js');
+    expect(paths).toContain('src/smoke.test.js');
+    expect(paths).not.toContain('tsconfig.json');
+    expect(paths).not.toContain('vite.config.ts');
+  });
+
+  it('eslint config is plain JS (no typescript-eslint)', () => {
+    const output = generateEslintConfig(config);
+    expect(output).not.toContain('typescript-eslint');
+    expect(output).toContain('globals.node');
+  });
+
+  it('gitignore omits framework build dirs', () => {
+    const output = generateGitignore(config);
+    expect(output).toContain('node_modules');
+    expect(output).not.toContain('.next/');
+  });
+});

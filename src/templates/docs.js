@@ -126,6 +126,8 @@ function frameworkLabel(framework) {
       return 'Next.js + TypeScript';
     case 'node-ts':
       return 'Node + TypeScript';
+    case 'none':
+      return 'None (guardrails only — choose your stack)';
     default:
       return framework;
   }
@@ -137,6 +139,7 @@ function testingLabel(framework) {
     case 'nextjs-ts':
       return 'Vitest + React Testing Library (TDD workflow)';
     case 'node-ts':
+    case 'none':
       return 'Vitest (TDD workflow)';
     default:
       return 'Vitest (TDD workflow)';
@@ -167,6 +170,9 @@ function directoryTree(framework) {
 ├── utils/        ← Pure utility functions
 ├── types/        ← Shared TypeScript interfaces
 └── index.ts      ← Entry point`;
+    case 'none':
+      return `src/
+└── smoke.test.js ← Starter test (add your own code alongside)`;
     default:
       return 'src/';
   }
