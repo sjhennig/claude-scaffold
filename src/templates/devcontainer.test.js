@@ -27,6 +27,7 @@ describe('generateDockerfile', () => {
   it('installs all expected system tools', () => {
     const dockerfile = generateDockerfile();
     const expectedTools = [
+      'ca-certificates',
       'git',
       'curl',
       'ripgrep',
@@ -105,5 +106,12 @@ describe('generateDevcontainerJson', () => {
   it('has postCreateCommand set to npm install', () => {
     const result = JSON.parse(generateDevcontainerJson(baseConfig));
     expect(result.postCreateCommand).toBe('npm install');
+  });
+
+  it('installs the GitHub CLI via a devcontainer feature', () => {
+    const result = JSON.parse(generateDevcontainerJson(baseConfig));
+    expect(result.features).toHaveProperty(
+      'ghcr.io/devcontainers/features/github-cli:1',
+    );
   });
 });

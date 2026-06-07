@@ -24,5 +24,7 @@
     }
   },
   "postCreateCommand": "npm install",
-  "features": {}
+  "features": {
+    "ghcr.io/devcontainers/features/github-cli:1": {}
+  }
 }

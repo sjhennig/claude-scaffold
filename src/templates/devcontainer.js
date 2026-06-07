@@ -5,8 +5,11 @@
 export function generateDockerfile() {
   return `FROM node:20-bookworm-slim
 
-# Core dev tools for CLI productivity inside the container
+# Core dev tools for CLI productivity inside the container.
+# ca-certificates first: the slim base omits it, which breaks HTTPS for git,
+# curl, and the github-cli devcontainer feature's keyring fetch.
 RUN apt-get update && apt-get install -y \\
+    ca-certificates \\
     git \\
     curl \\
     ripgrep \\
