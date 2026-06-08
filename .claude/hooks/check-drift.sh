@@ -32,9 +32,11 @@ jq -e '.subsystems | length > 0' "$MAP" >/dev/null 2>&1 || exit 0
 # Must be inside a git work tree to inspect history.
 git -C "$ROOT" rev-parse --git-dir >/dev/null 2>&1 || exit 0
 
-# Resolve the base of the lookback window. A young/shallow repo with fewer than
-# LOOKBACK commits has no such base — stay silent.
-BASE=$(git -C "$ROOT" rev-list --max-count=1 "HEAD~$LOOKBACK" 2>/dev/null) || exit 0
+# Resolve the base of the lookback window. On a young/shallow repo with fewer
+# than LOOKBACK commits, HEAD~$LOOKBACK does not resolve — fall back to the root
+# commit so early drift is still caught instead of silently skipped.
+BASE=$(git -C "$ROOT" rev-list --max-count=1 "HEAD~$LOOKBACK" 2>/dev/null)
+[ -n "$BASE" ] || BASE=$(git -C "$ROOT" rev-list --max-parents=0 HEAD 2>/dev/null | tail -1)
 [ -n "$BASE" ] || exit 0
 
 # Files touched in the window (committed history only; the Stop gate already
