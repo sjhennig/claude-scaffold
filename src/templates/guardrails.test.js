@@ -1,5 +1,14 @@
-import { describe, it, expect } from 'vitest';
-import { readFileSync } from 'node:fs';
+import { afterEach, beforeEach, describe, it, expect } from 'vitest';
+import {
+  chmodSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from 'node:fs';
+import { execFileSync } from 'node:child_process';
+import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import {
   generateClaudeSettings,
@@ -217,5 +226,90 @@ describe('dogfood: committed .claude/ matches generated output', () => {
       'utf-8',
     );
     expect(committed).toBe(generateCheckDriftScript());
+  });
+});
+
+// Behavioral test: exercise the emitted check-drift.sh against real throwaway
+// git repos. Everything lives under tmpdir() — the real repo is never touched
+// (the whole point: it replaces the risky manual scratch-repo testing). bash +
+// git only, so skip on Windows.
+describe.skipIf(process.platform === 'win32')('check-drift.sh behavior', () => {
+  let dir;
+
+  // Build a fresh young git repo with the hook installed and one seed commit
+  // containing the map, a source file, and its spec.
+  function git(args) {
+    execFileSync('git', ['-C', dir, ...args], { stdio: 'pipe' });
+  }
+
+  function seedRepo(map) {
+    mkdirSync(join(dir, '.claude/hooks'), { recursive: true });
+    mkdirSync(join(dir, 'docs/specs'), { recursive: true });
+    mkdirSync(join(dir, 'src'), { recursive: true });
+    const hook = join(dir, '.claude/hooks/check-drift.sh');
+    writeFileSync(hook, generateCheckDriftScript());
+    chmodSync(hook, 0o755);
+    if (map !== null) {
+      writeFileSync(join(dir, 'docs/specs/subsystem-map.json'), map);
+    }
+    writeFileSync(join(dir, 'src/auth.js'), 'v0\n');
+    writeFileSync(join(dir, 'docs/specs/auth.md'), '# auth spec\n');
+    git(['init', '-q']);
+    git(['config', 'user.email', 't@t.t']);
+    git(['config', 'user.name', 't']);
+    git(['add', '-A']);
+    git(['commit', '-qm', 'seed']);
+  }
+
+  const AUTH_MAP = JSON.stringify({
+    subsystems: [
+      { name: 'auth', files: ['src/auth.js'], spec: 'docs/specs/auth.md' },
+    ],
+  });
+
+  function runHook() {
+    return execFileSync('bash', ['.claude/hooks/check-drift.sh'], {
+      cwd: dir,
+      env: { ...process.env, CLAUDE_PROJECT_DIR: dir },
+      encoding: 'utf-8',
+    });
+  }
+
+  beforeEach(() => {
+    dir = mkdtempSync(join(tmpdir(), 'drift-'));
+  });
+
+  afterEach(() => {
+    rmSync(dir, { recursive: true, force: true });
+  });
+
+  it('stays silent when there is no subsystem map', () => {
+    seedRepo(null);
+    expect(runHook()).toBe('');
+  });
+
+  it('warns when source changed but its spec did not', () => {
+    seedRepo(AUTH_MAP);
+    writeFileSync(join(dir, 'src/auth.js'), 'v1\n');
+    git(['commit', '-qam', 'change auth source']);
+    const out = runHook();
+    expect(out).toMatch(/drift/i);
+    expect(out).toContain('auth');
+    expect(out).toContain('docs/specs/auth.md');
+  });
+
+  it('stays silent when source and spec change together', () => {
+    seedRepo(AUTH_MAP);
+    writeFileSync(join(dir, 'src/auth.js'), 'v1\n');
+    writeFileSync(join(dir, 'docs/specs/auth.md'), '# auth spec v2\n');
+    git(['commit', '-qam', 'change auth source + spec']);
+    expect(runHook()).toBe('');
+  });
+
+  it('stays silent when the map has no subsystems', () => {
+    seedRepo(JSON.stringify({ subsystems: [] }));
+    writeFileSync(join(dir, 'src/auth.js'), 'v1\n');
+    git(['commit', '-qam', 'change auth source']);
+    expect(runHook()).toBe('');
   });
 });
