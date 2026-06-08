@@ -25,12 +25,12 @@ Builders who use Claude Code as their primary development interface and want max
 
 ## Milestones
 
-- **M0**: Dogfood guardrails on this repo (devcontainer, hooks, permissions, sandbox, lint, CLAUDE.md)
-- **M1**: Core scaffold (framework-agnostic guardrail emission)
-- **M2**: Plugin with subagents (code-reviewer, spec-reviewer, test-runner, security-reviewer)
-- **M3**: Context network (docs templates, drift detection, NOTES.md convention)
-- **M4**: Self-verification suite in CI
-- **M5**: Framework templates (Node+TS first, then React+Vite, Next.js)
+- **M0** ✅: Dogfood guardrails on this repo (devcontainer, hooks, permissions, sandbox, lint, CLAUDE.md)
+- **M1** ✅: Core scaffold (framework-agnostic guardrail emission)
+- **M2** ✅: Plugin with subagents (code-reviewer, spec-reviewer, test-runner, security-reviewer)
+- **M3** ✅: Context network (docs templates, drift detection, NOTES.md convention)
+- **M4** ✅: Self-verification suite in CI (generation content + boot-all-four + guardrail-fires; see `docs/specs/self-verification.md`)
+- **M5** ⬅️ next: Framework templates (Node+TS first, then React+Vite, Next.js)
 
 ## Out of Scope
 

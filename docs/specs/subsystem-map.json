@@ -9,6 +9,11 @@
       "name": "qc-agents",
       "files": ["src/templates/agents.js"],
       "spec": "docs/specs/qc-agents.md"
+    },
+    {
+      "name": "self-verification",
+      "files": ["scripts/boot-test.mjs"],
+      "spec": "docs/specs/self-verification.md"
     }
   ]
 }

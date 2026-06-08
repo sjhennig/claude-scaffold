@@ -205,7 +205,9 @@ Strict TypeScript config: target ES2020, JSX react-jsx, bundler module resolutio
 
 ### `src/setup-tests.ts`
 
-One line: `import '@testing-library/jest-dom';`
+One line: `import '@testing-library/jest-dom/vitest';` (the `/vitest` entry binds
+the matchers to vitest's `expect`; the bare import expects a global `expect`,
+which these templates don't enable, and throws at test startup).
 
 ### `src/App.tsx`
 
