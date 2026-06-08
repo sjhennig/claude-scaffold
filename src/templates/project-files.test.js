@@ -422,6 +422,10 @@ describe('generateGitignore', () => {
       it('includes .claude.json', () => {
         expect(output).toContain('.claude.json');
       });
+
+      it('ignores accumulated QC-subagent memory', () => {
+        expect(output).toContain('.claude/agent-memory/');
+      });
     });
   }
 

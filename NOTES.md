@@ -21,6 +21,24 @@ entries short and high-signal. Newest at the top.
 
 ---
 
+## 2026-06-08 — QC-subagent memory is gitignored, not committed
+
+**Context** — The dogfooded `code-reviewer` subagent has `memory: project`
+(design brief §8: accumulate codebase patterns across sessions), so it writes
+`.claude/agent-memory/` during reviews. Question: commit it (shared, persistent
+review context) or ignore it (machine-written, ever-growing local state)?
+
+**Decision** — **Ignore it** — `.claude/agent-memory/` added to both this repo's
+`.gitignore` and the generated template, alongside `.claude.json`. Machine-authored
+memory churns every session and can hold stale/wrong notes (the recall system even
+warns memories reflect "what was true when written"); committing it would add noise
+and merge conflicts.
+
+**Consequences** — Accumulation is per-developer/per-clone, not shared, and CI
+starts fresh — acceptable, since review memory is an optimization, not correctness.
+A team that wants shared review context can un-ignore deliberately. Generated
+projects inherit the same default.
+
 ## 2026-06-08 — M4 self-verification: boot all four templates in CI
 
 **Context** — Design brief §7 (the "highest-risk requirement") demands the

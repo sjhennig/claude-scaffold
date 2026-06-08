@@ -519,6 +519,7 @@ Thumbs.db
 *.swp
 *.swo
 .claude.json
+.claude/agent-memory/
 coverage/
 `,
   'nextjs-ts': `node_modules
@@ -535,6 +536,7 @@ Thumbs.db
 *.swp
 *.swo
 .claude.json
+.claude/agent-memory/
 coverage/
 `,
   'node-ts': `node_modules
@@ -549,6 +551,7 @@ Thumbs.db
 *.swp
 *.swo
 .claude.json
+.claude/agent-memory/
 coverage/
 `,
   none: `node_modules
@@ -562,6 +565,7 @@ Thumbs.db
 *.swp
 *.swo
 .claude.json
+.claude/agent-memory/
 coverage/
 `,
 };
