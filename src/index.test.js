@@ -65,6 +65,7 @@ describe('run (orchestrator)', () => {
       'docs/architecture.md',
       'docs/specs/README.md',
       'docs/specs/_template.md',
+      'NOTES.md',
       '.gitignore',
       '.env',
       '.env.example',

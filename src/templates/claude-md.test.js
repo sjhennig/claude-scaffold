@@ -32,6 +32,14 @@ describe('generateClaudeMd', () => {
     expect(output).toContain('A test project');
   });
 
+  it('points at NOTES.md in both the context docs and the compaction directive', () => {
+    const output = generateClaudeMd(baseConfig);
+    // Listed as a context doc...
+    expect(output).toMatch(/- `NOTES\.md` — Decisions log/);
+    // ...and named in the compaction preserve-list so it survives resets.
+    expect(output).toMatch(/When compacting[\s\S]*NOTES\.md/);
+  });
+
   describe('framework commands', () => {
     it.each(['react-vite-ts', 'nextjs-ts', 'node-ts'])(
       'contains the command table for %s',

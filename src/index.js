@@ -21,6 +21,7 @@ import {
   generateApiIntegration,
   generateSpecsReadme,
   generateSubsystemSpecTemplate,
+  generateNotesLog,
 } from './templates/docs.js';
 import {
   generateGitignore,
@@ -79,6 +80,7 @@ export async function run() {
     ['docs/architecture.md', generateArchitecture(config)],
     ['docs/specs/README.md', generateSpecsReadme()],
     ['docs/specs/_template.md', generateSubsystemSpecTemplate()],
+    ['NOTES.md', generateNotesLog()],
 
     // Shared project config
     ['.gitignore', generateGitignore(config)],
