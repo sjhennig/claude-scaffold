@@ -75,7 +75,7 @@ This is the biggest change. Add framework-specific generators for package.json, 
     "lint": "next lint",
     "lint:fix": "next lint --fix",
     "typecheck": "npx tsc --noEmit",
-    "format": "prettier --write 'src/**/*.{ts,tsx}' 'app/**/*.{ts,tsx}'"
+    "format": "prettier --write 'src/**/*.{ts,tsx}'"
   },
   "dependencies": {
     "next": "^15.0.0",
@@ -83,6 +83,7 @@ This is the biggest change. Add framework-specific generators for package.json, 
     "react-dom": "^19.0.0"
   },
   "devDependencies": {
+    "@types/node": "^20.19.0",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
     "typescript": "~5.7.0",

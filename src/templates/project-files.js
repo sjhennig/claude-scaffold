@@ -788,6 +788,9 @@ const projectTreeByFramework = {
 └── package.json`,
 };
 
+// NOTE: the "Claude Code Workflow" / "Running in Auto Mode" prose below
+// hand-summarizes the permissions, sandbox, and hooks emitted by
+// generateClaudeSettings() in guardrails.js — keep them in sync if that changes.
 export function generateReadme(config) {
   const devStep = devInstructionsByFramework[config.framework](config);
   const tree = projectTreeByFramework[config.framework](config.projectName);
@@ -818,6 +821,24 @@ This project is set up for AI-first development with Claude Code:
 - **\`docs/\`** — Detailed context documents Claude reads as needed
 - **\`docs/specs/\`** — Feature specs written before implementation
 - **\`.claude/settings.json\`** — Sensible default permissions, sandbox, and hooks. Safe operations (file edits, local git, running tests) are auto-approved. Destructive or external-facing actions (rm, git push, npm install) still require manual approval. Hooks auto-format edited files, block dangerous shell commands, and run \`npm run verify\` when Claude finishes a task — **blocking turn-end until it passes**.
+
+## Running in Auto Mode
+
+These guardrails exist so you can run Claude at high autonomy without watching
+every step:
+
+- **Fewer prompts:** safe operations (edits, local git, running tests) are
+  auto-approved, so Claude rarely stops to ask. The actions that are hard to undo
+  — \`git push\`, deploys, \`rm\`, installing packages — still pause for your OK.
+- **A safety net under every turn:** a hook runs \`npm run verify\` when Claude
+  tries to finish and **keeps it working until that passes** (releasing with a
+  warning after a few failed attempts so you're never stuck), so the code Claude
+  leaves behind is formatted, lint-clean, and green.
+- **Honest boundaries:** the sandbox and a dangerous-command check block the worst
+  mistakes before they run, and secrets (\`.env\`, SSH keys) are off-limits.
+
+If you ever catch Claude ignoring an instruction, **trim \`CLAUDE.md\`** rather than
+adding more to it — an overstuffed file is the usual cause.
 
 ## Project Structure
 

@@ -21,6 +21,33 @@ entries short and high-signal. Newest at the top.
 
 ---
 
+## 2026-06-08 — M4 self-verification: boot all four templates in CI
+
+**Context** — Design brief §7 (the "highest-risk requirement") demands the
+scaffold verify its own output. Before M4, the generation test only checked file
+_existence_, no boot test existed, and hook tests only asserted on generator
+source strings. Open question: how faithful/expensive should the boot test be,
+given React/Next pull large dep trees (minutes, flaky) while node-ts/none are cheap.
+
+**Decision** — (1) **Boot all four templates** (`none`, `node-ts`,
+`react-vite-ts`, `nextjs-ts`) by running `npm install && npm run verify` inside a
+generated temp dir, in a **dedicated CI `boot` job** (matrix, one leg per
+template, parallel to `test`), kept out of `npm test` / `npm run verify` so the
+fast loop and the dogfooded Stop gate never trigger installs. (2) Generation
+**content** test uses **targeted invariants, not golden snapshots** (no snapshot
+churn; boot now proves the content actually works). (3) Guardrail-fires tests are
+**behavioral** — execute the real hooks. (4) Refactored `generateProject(config,
+root)` out of `run()` so the harness generates without mocking prompts.
+
+**Consequences** — Building the boot test surfaced that three templates shipped
+**no test file** (so their own Stop gate would block on day one) and that the
+React/Next `setup-tests.ts` jest-dom import was broken — both fixed by emitting a
+starter test per template + the `/vitest` jest-dom entry. Commits us to: every
+new template must ship a starter test, and `next lint` must migrate before
+Next 16. Subagent _runtime_ invocation (§7.3) stays unverified in CI (no live
+Claude) — structural coverage in `agents.test.js` is the accepted substitute.
+See [[self-verification]].
+
 ## 2026-06-08 — Drift detection ships dormant; specs are opt-in per subsystem
 
 **Context** — M3 added a `SessionStart` drift hook (`.claude/hooks/check-drift.sh`)
