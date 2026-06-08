@@ -69,6 +69,14 @@ IMPORTANT: Before starting any task, identify which docs below are relevant and 
 
 - **Evidence before claims**: run \`npm run verify\` and show the output before asserting a change works. Do not claim success you have not observed.
 
+## Quality Review
+
+Read-only QC subagents live in \`.claude/agents/\` (\`code-reviewer\`,
+\`spec-reviewer\`, \`test-runner\`, \`security-reviewer\`). Run \`/review\` at a
+checkpoint — pre-commit or end of a feature — to review the current diff.
+Subagent review costs several times the tokens of a normal turn, so use it at
+checkpoints, not every turn.
+
 ## Git Workflow
 
 - Feature branches off \`main\`
