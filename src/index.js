@@ -13,6 +13,7 @@ import {
   generateValidateCommandScript,
   generateVerifyGateScript,
   generateSandboxPreflightScript,
+  generateCheckDriftScript,
 } from './templates/guardrails.js';
 import { getAgentFiles } from './templates/agents.js';
 import {
@@ -70,6 +71,7 @@ export async function run() {
     ['.claude/hooks/validate-command.sh', generateValidateCommandScript()],
     ['.claude/hooks/verify-gate.sh', generateVerifyGateScript()],
     ['.claude/hooks/sandbox-preflight.sh', generateSandboxPreflightScript()],
+    ['.claude/hooks/check-drift.sh', generateCheckDriftScript()],
     ['.claude/commands/README.md', generateCommandsReadme()],
 
     // Claude Code — quality-control subagents + /qc command
@@ -111,6 +113,7 @@ export async function run() {
     '.claude/hooks/validate-command.sh',
     '.claude/hooks/verify-gate.sh',
     '.claude/hooks/sandbox-preflight.sh',
+    '.claude/hooks/check-drift.sh',
   ]) {
     await chmod(join(root, hookScript), 0o755);
   }
