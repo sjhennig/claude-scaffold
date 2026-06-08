@@ -1,8 +1,18 @@
 import { describe, it, expect } from 'vitest';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import {
   generateDockerfile,
   generateDevcontainerJson,
 } from './devcontainer.js';
+
+// True if the Dockerfile installs `tool` via its apt-get line. The tools sit on
+// their own continuation lines, so a substring match is enough — and ignores
+// ordering and the surrounding apt flags that legitimately differ between the
+// repo's Dockerfile and the generated one.
+function installsTool(dockerfile, tool) {
+  return dockerfile.includes(tool);
+}
 
 const baseConfig = {
   projectName: 'test-project',
@@ -115,5 +125,51 @@ describe('generateDevcontainerJson', () => {
     expect(result.features).toHaveProperty(
       'ghcr.io/devcontainers/features/github-cli:1',
     );
+  });
+});
+
+// Dogfooding guard: this repo's .devcontainer/Dockerfile is maintained by hand
+// and legitimately differs in *structure* from generateDockerfile() (apt flags,
+// sudoers path, bash-history mechanism, WORKDIR, python3). But the two must
+// never silently diverge on the security/tooling *invariants* — the real bug
+// class is dropping a sandbox-critical tool (e.g. bubblewrap) from one but not
+// the other. This asserts only those shared invariants, not byte equality.
+describe('dogfood: repo Dockerfile shares the generated security invariants', () => {
+  const repoDockerfile = readFileSync(
+    join(process.cwd(), '.devcontainer/Dockerfile'),
+    'utf-8',
+  );
+  const generated = generateDockerfile();
+  const dockerfiles = [
+    ['repo .devcontainer/Dockerfile', repoDockerfile],
+    ['generateDockerfile()', generated],
+  ];
+
+  it.each(dockerfiles)('%s uses the node:20-bookworm-slim base', (_, df) => {
+    expect(df).toContain('FROM node:20-bookworm-slim');
+  });
+
+  // bubblewrap + socat power the sandbox layer; jq/git/ripgrep/ca-certificates
+  // are relied on by the hooks and CLI. None may be dropped from either image.
+  const sharedTools = [
+    'bubblewrap',
+    'socat',
+    'jq',
+    'git',
+    'ca-certificates',
+    'ripgrep',
+  ];
+  it.each(dockerfiles)('%s installs the shared toolchain', (_, df) => {
+    for (const tool of sharedTools) {
+      expect(installsTool(df, tool)).toBe(true);
+    }
+  });
+
+  it.each(dockerfiles)('%s installs Claude Code globally', (_, df) => {
+    expect(df).toContain('npm install -g @anthropic-ai/claude-code');
+  });
+
+  it.each(dockerfiles)('%s drops to the non-root node user', (_, df) => {
+    expect(df).toContain('USER node');
   });
 });
