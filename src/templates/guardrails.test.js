@@ -5,6 +5,7 @@ import {
   generateClaudeSettings,
   generateValidateCommandScript,
   generateVerifyGateScript,
+  generateSandboxPreflightScript,
 } from './guardrails.js';
 
 describe('generateClaudeSettings', () => {
@@ -61,6 +62,12 @@ describe('generateClaudeSettings', () => {
     expect(command).toContain('$CLAUDE_PROJECT_DIR');
     expect(command).toContain('verify-gate.sh');
   });
+
+  it('SessionStart runs the project-dir-rooted sandbox preflight', () => {
+    const command = settings.hooks.SessionStart[0].hooks[0].command;
+    expect(command).toContain('$CLAUDE_PROJECT_DIR');
+    expect(command).toContain('sandbox-preflight.sh');
+  });
 });
 
 describe('generateValidateCommandScript', () => {
@@ -101,6 +108,31 @@ describe('generateVerifyGateScript', () => {
   });
 });
 
+describe('generateSandboxPreflightScript', () => {
+  const script = generateSandboxPreflightScript();
+
+  it('is a bash script', () => {
+    expect(script.startsWith('#!/usr/bin/env bash')).toBe(true);
+  });
+
+  it('only warns when the sandbox is actually enabled', () => {
+    expect(script).toContain('.sandbox.enabled');
+  });
+
+  it('checks that bwrap can create a namespace, not just that it exists', () => {
+    expect(script).toContain('command -v bwrap');
+    expect(script).toContain('bwrap --ro-bind / / true');
+  });
+
+  it('is advisory only — never blocks (no exit 2)', () => {
+    expect(script).not.toContain('exit 2');
+  });
+
+  it('stays silent when it cannot tell (no jq / no settings file)', () => {
+    expect(script).toContain('command -v jq');
+  });
+});
+
 // Dogfooding guard: this repo must run the very guardrails it emits.
 // If these fail, the committed .claude/ has drifted from the generator —
 // regenerate it (see scripts in src/templates/guardrails.js).
@@ -128,5 +160,13 @@ describe('dogfood: committed .claude/ matches generated output', () => {
       'utf-8',
     );
     expect(committed).toBe(generateVerifyGateScript());
+  });
+
+  it('sandbox-preflight.sh matches generateSandboxPreflightScript', () => {
+    const committed = readFileSync(
+      join(repoRoot, '.claude/hooks/sandbox-preflight.sh'),
+      'utf-8',
+    );
+    expect(committed).toBe(generateSandboxPreflightScript());
   });
 });
