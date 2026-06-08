@@ -166,6 +166,27 @@ describe('run (orchestrator)', () => {
     expect(await fileExists(join(root, 'index.html'))).toBe(false);
   });
 
+  it('emits the QC subagents and /review command for every framework', async () => {
+    const agentFiles = [
+      '.claude/agents/code-reviewer.md',
+      '.claude/agents/spec-reviewer.md',
+      '.claude/agents/test-runner.md',
+      '.claude/agents/security-reviewer.md',
+      '.claude/commands/review.md',
+    ];
+
+    for (const framework of ['react-vite-ts', 'nextjs-ts', 'node-ts', 'none']) {
+      const config = withConfig({ framework, projectName: `qc-${framework}` });
+      gatherInput.mockResolvedValue(config);
+      await run();
+
+      const root = join(tempDir, config.projectName);
+      for (const file of agentFiles) {
+        expect(await fileExists(join(root, file))).toBe(true);
+      }
+    }
+  });
+
   it('creates framework-specific directories with .gitkeep for react-vite-ts', async () => {
     const config = withConfig({ framework: 'react-vite-ts' });
     gatherInput.mockResolvedValue(config);

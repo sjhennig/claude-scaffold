@@ -13,6 +13,7 @@ import {
   generateValidateCommandScript,
   generateVerifyGateScript,
 } from './templates/guardrails.js';
+import { getAgentFiles } from './templates/agents.js';
 import {
   generateProjectBrief,
   generateArchitecture,
@@ -66,6 +67,9 @@ export async function run() {
     ['.claude/hooks/validate-command.sh', generateValidateCommandScript()],
     ['.claude/hooks/verify-gate.sh', generateVerifyGateScript()],
     ['.claude/commands/README.md', generateCommandsReadme()],
+
+    // Claude Code — quality-control subagents + /review command
+    ...getAgentFiles(),
 
     // Docs
     ['docs/project-brief.md', generateProjectBrief(config)],
