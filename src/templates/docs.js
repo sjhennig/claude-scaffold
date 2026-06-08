@@ -1,6 +1,6 @@
 /**
  * Generates docs/ templates: project-brief.md, architecture.md,
- * api-integration.md (conditional), and specs/README.md
+ * api-integration.md (conditional), specs/README.md, and specs/_template.md
  */
 
 export function generateProjectBrief(config) {
@@ -103,11 +103,16 @@ Never commit this file — it's listed in \`.gitignore\`.
 }
 
 export function generateSpecsReadme() {
-  return `# Feature Specs
+  return `# Feature & Subsystem Specs
 
-This directory holds spec documents for features before they're built.
+This directory holds spec documents — living, AI-maintained descriptions of what
+the code is supposed to do. Two kinds live here:
 
-## Spec-Driven Workflow
+- **Feature specs** — written *before* a feature is built (spec-driven workflow).
+- **Subsystem specs** — one per subsystem, kept *alongside* the code as it
+  evolves. Copy \`_template.md\` to start one (e.g. \`auth.md\`).
+
+## Spec-Driven Workflow (new features)
 
 1. **Describe** the feature to Claude in a conversation
 2. **Ask Claude:** "Ask me hard questions about this feature, then write a spec"
@@ -115,6 +120,84 @@ This directory holds spec documents for features before they're built.
 4. **Start a fresh Claude session** to implement — point it at the spec
 
 Writing specs before code forces you to think through edge cases and gives Claude the context it needs to build the right thing.
+
+## Subsystem Specs (the convention)
+
+- **One spec per subsystem**, each naming the exact files it owns and its public
+  interface. \`_template.md\` is the starting point.
+- **Living documents.** Claude updates the relevant spec — at your direction — as
+  part of finishing a change that touches the subsystem. A stale spec is worse
+  than no spec, because it makes the agent confidently wrong.
+- **High-signal, on-demand.** Specs are read just-in-time (when working on that
+  subsystem), not loaded into every session. Keep them file-path-and-parameter
+  explicit so they're worth the read.
+
+## Drift detection (keeping specs honest)
+
+A \`SessionStart\` hook (\`.claude/hooks/check-drift.sh\`) can warn when a
+subsystem's source changed in recent commits but its spec didn't. It reads an
+optional **subsystem→file map** you maintain at \`docs/specs/subsystem-map.json\`:
+
+\`\`\`json
+{
+  "subsystems": [
+    { "name": "auth", "files": ["src/auth.ts"], "spec": "docs/specs/auth.md" }
+  ]
+}
+\`\`\`
+
+The map starts empty (fresh projects have no subsystems) and the hook stays
+silent until you add entries. Add a subsystem here once it's worth tracking.
+`;
+}
+
+export function generateSubsystemSpecTemplate() {
+  return `# <Subsystem> Spec
+
+<!--
+Living doc — Claude updates this at the author's direction whenever the owning
+files change. One spec per subsystem. Copy this file to e.g. docs/specs/auth.md
+and register it in docs/specs/subsystem-map.json so drift detection can watch it.
+Keep it file-path-and-parameter explicit: it earns its place by being more
+precise than re-reading the code.
+-->
+
+## Purpose
+
+<!-- One paragraph: what this subsystem is responsible for, and what it is NOT. -->
+
+## Owning files
+
+<!-- The exact files this spec governs, each with a one-line role. -->
+
+- \`src/path/to/file.ts\` — <role>
+
+## Public interface
+
+<!-- Exported functions / types other code depends on, with signatures and the
+     meaning of each parameter and return value. -->
+
+\`\`\`
+functionName(param: Type) -> ReturnType   // what it does; what each param means
+\`\`\`
+
+## Invariants & constraints
+
+<!-- Rules that must always hold (ordering, validation, idempotency, limits). -->
+
+-
+
+## Edge cases
+
+<!-- Inputs/states that need deliberate handling, and the expected behavior. -->
+
+-
+
+## Open decisions
+
+<!-- Unresolved questions or deferred tradeoffs. Move resolved ones to NOTES.md. -->
+
+-
 `;
 }
 
