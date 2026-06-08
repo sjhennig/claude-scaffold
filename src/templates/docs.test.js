@@ -5,6 +5,7 @@ import {
   generateApiIntegration,
   generateSpecsReadme,
   generateSubsystemSpecTemplate,
+  generateNotesLog,
 } from './docs.js';
 
 const baseConfig = {
@@ -93,6 +94,23 @@ describe('generateSpecsReadme', () => {
     expect(json).not.toBeNull();
     expect(() => JSON.parse(json[1])).not.toThrow();
     expect(JSON.parse(json[1])).toHaveProperty('subsystems');
+  });
+});
+
+describe('generateNotesLog', () => {
+  const notes = generateNotesLog();
+
+  it('documents the dated decision-entry format', () => {
+    expect(notes).toContain('YYYY-MM-DD');
+    expect(notes).toContain('**Context**');
+    expect(notes).toContain('**Decision**');
+    expect(notes).toContain('**Consequences**');
+  });
+
+  it('frames it as cross-session memory, not a task list', () => {
+    const lower = notes.toLowerCase();
+    expect(lower).toMatch(/context resets|survives|long-horizon/);
+    expect(lower).toMatch(/not a task list/);
   });
 });
 

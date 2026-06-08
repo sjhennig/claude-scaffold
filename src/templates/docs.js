@@ -1,6 +1,7 @@
 /**
  * Generates docs/ templates: project-brief.md, architecture.md,
- * api-integration.md (conditional), specs/README.md, and specs/_template.md
+ * api-integration.md (conditional), specs/README.md, specs/_template.md,
+ * and the root NOTES.md decisions log.
  */
 
 export function generateProjectBrief(config) {
@@ -198,6 +199,39 @@ functionName(param: Type) -> ReturnType   // what it does; what each param means
 <!-- Unresolved questions or deferred tradeoffs. Move resolved ones to NOTES.md. -->
 
 -
+`;
+}
+
+export function generateNotesLog() {
+  return `# NOTES — decisions log
+
+Long-horizon memory that survives context resets. When a non-obvious decision is
+made or reversed — a tradeoff, a constraint discovered, an approach abandoned —
+**Claude appends a dated entry here** (at the author's direction). Read this
+before starting long-horizon work; it's the cheapest way to avoid re-litigating
+settled questions or repeating a dead end.
+
+This is for *decisions and their rationale*, not a task list or a changelog. Keep
+entries short and high-signal. Newest at the top.
+
+## Format
+
+\`\`\`
+## YYYY-MM-DD — <short title>
+
+**Context** — what prompted the decision.
+**Decision** — what was chosen.
+**Consequences** — what this commits us to, and what it rules out.
+\`\`\`
+
+---
+
+## (example) 2025-01-01 — Seed the decisions log
+
+**Context** — New project; no place to record cross-session decisions yet.
+**Decision** — Keep a dated decisions log at \`NOTES.md\` in the repo root.
+**Consequences** — Non-obvious choices get written down once and reused; delete
+this example entry when you record your first real one.
 `;
 }
 

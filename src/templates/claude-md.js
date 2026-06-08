@@ -63,7 +63,8 @@ IMPORTANT: Before starting any task, identify which docs below are relevant and 
 
 - \`docs/project-brief.md\` — What this project is, who it's for, v1 scope
 - \`docs/architecture.md\` — System design, directory layout, key patterns
-- \`docs/specs/\` — Feature specs; read the relevant spec before implementing
+- \`docs/specs/\` — Feature & subsystem specs; read the relevant one before implementing, and update it when you change what it describes
+- \`NOTES.md\` — Decisions log; read before long-horizon work, append a dated entry when a non-obvious decision is made
 
 ## Rules
 
@@ -97,6 +98,6 @@ Tests live next to the code they test: \`foo.ts\` → \`foo.test.ts\`
 
 ## On Compaction
 
-When compacting, always preserve: the list of modified files, the test/verify commands and their last output, and any open decisions or unresolved issues.
+When compacting, always preserve: the list of modified files, the test/verify commands and their last output, and any open decisions or unresolved issues (record settled ones in \`NOTES.md\`).
 `;
 }
