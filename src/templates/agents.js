@@ -7,11 +7,11 @@
  *   - .claude/agents/spec-reviewer.md
  *   - .claude/agents/test-runner.md
  *   - .claude/agents/security-reviewer.md
- *   - .claude/commands/review.md      (the /review checkpoint command)
+ *   - .claude/commands/qc.md          (the /qc checkpoint command)
  *
  * Like guardrails.js, these are the single source of truth for the subagents
  * this repo also dogfoods — agents.test.js asserts the committed
- * .claude/agents/ and .claude/commands/review.md match this output, so the
+ * .claude/agents/ and .claude/commands/qc.md match this output, so the
  * tool can never drift from what it ships.
  *
  * Design constraints (from the research + design briefs, re-verified against
@@ -21,7 +21,7 @@
  *     STRUCTURED return shape so the main thread can act on the summary alone.
  *   - Reviewers are READ-ONLY: no Write/Edit/MultiEdit in their `tools`.
  *   - `model: inherit` keeps routine review on the session model; the cost
- *     note in /review and CLAUDE.md steers heavy use to checkpoints only.
+ *     note in /qc and CLAUDE.md steers heavy use to checkpoints only.
  *   - These files carry NO `hooks`/`mcpServers`/`permissionMode` frontmatter:
  *     those are ignored for plugin-loaded agents and belong in
  *     .claude/settings.json (the guardrail layer in guardrails.js) regardless.
@@ -200,7 +200,7 @@ generic category.
 `;
 }
 
-export function generateReviewCommand() {
+export function generateQcCommand() {
   return `---
 description: Run a quality checkpoint on the current diff using the QC subagents
 ---
@@ -231,7 +231,7 @@ stronger model for milestone review.
 }
 
 /**
- * The [relativePath, content] tuples for the QC subagents and the /review
+ * The [relativePath, content] tuples for the QC subagents and the /qc
  * command. Framework-agnostic — every project gets the same set. Mirrors the
  * getFrameworkFiles()/commonFiles shape used by index.js.
  */
@@ -241,6 +241,6 @@ export function getAgentFiles() {
     ['.claude/agents/spec-reviewer.md', generateSpecReviewerAgent()],
     ['.claude/agents/test-runner.md', generateTestRunnerAgent()],
     ['.claude/agents/security-reviewer.md', generateSecurityReviewerAgent()],
-    ['.claude/commands/review.md', generateReviewCommand()],
+    ['.claude/commands/qc.md', generateQcCommand()],
   ];
 }

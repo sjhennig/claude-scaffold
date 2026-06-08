@@ -68,7 +68,7 @@ export async function run() {
     ['.claude/hooks/verify-gate.sh', generateVerifyGateScript()],
     ['.claude/commands/README.md', generateCommandsReadme()],
 
-    // Claude Code — quality-control subagents + /review command
+    // Claude Code — quality-control subagents + /qc command
     ...getAgentFiles(),
 
     // Docs
