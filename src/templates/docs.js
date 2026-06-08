@@ -109,8 +109,8 @@ export function generateSpecsReadme() {
 This directory holds spec documents — living, AI-maintained descriptions of what
 the code is supposed to do. Two kinds live here:
 
-- **Feature specs** — written *before* a feature is built (spec-driven workflow).
-- **Subsystem specs** — one per subsystem, kept *alongside* the code as it
+- **Feature specs** — written _before_ a feature is built (spec-driven workflow).
+- **Subsystem specs** — one per subsystem, kept _alongside_ the code as it
   evolves. Copy \`_template.md\` to start one (e.g. \`auth.md\`).
 
 ## Spec-Driven Workflow (new features)
@@ -211,7 +211,7 @@ made or reversed — a tradeoff, a constraint discovered, an approach abandoned 
 before starting long-horizon work; it's the cheapest way to avoid re-litigating
 settled questions or repeating a dead end.
 
-This is for *decisions and their rationale*, not a task list or a changelog. Keep
+This is for _decisions and their rationale_, not a task list or a changelog. Keep
 entries short and high-signal. Newest at the top.
 
 ## Format

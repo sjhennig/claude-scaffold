@@ -57,3 +57,5 @@ When compacting, always preserve:
 
 - @docs/architecture.md — system design and data flow
 - @docs/project-brief.md — goals, audience, and v2 roadmap
+- `docs/specs/` — subsystem specs (living docs; update the relevant one when you change what it describes). `subsystem-map.json` drives the drift hook.
+- `NOTES.md` — decisions log; read before long-horizon work, append a dated entry when a non-obvious decision is made

@@ -13,7 +13,9 @@ Steps:
 2. Delegate to the **code-reviewer** subagent for correctness, security, and
    maintainability.
 3. If the change implements something with a spec in `docs/specs/` (or a
-   `SPEC.md`/`PLAN.md`), delegate to the **spec-reviewer** subagent.
+   `SPEC.md`/`PLAN.md`), or touches a subsystem listed in
+   `docs/specs/subsystem-map.json`, delegate to the **spec-reviewer** subagent
+   (it also flags specs left stale by the change).
 4. If the change touches authentication, input handling, secrets, or external
    data, delegate to the **security-reviewer** subagent.
 5. Synthesize all findings into a single list grouped Critical / Warning /

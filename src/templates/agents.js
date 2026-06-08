@@ -101,6 +101,10 @@ no less.
 3. For each requirement in the spec, determine whether the diff implements it,
    and whether the listed edge cases have corresponding tests.
 4. Flag anything the diff changes that the spec did NOT ask for (scope creep).
+5. Check for spec drift. If \`docs/specs/subsystem-map.json\` exists, read it: for
+   any changed file listed under a subsystem's \`files\`, confirm that subsystem's
+   \`spec\` was also updated in the diff. If the source changed but its spec did
+   not, report it — a living spec must move with the code it describes.
 
 ## Return shape
 
@@ -115,11 +119,15 @@ Report gaps only — not a restatement of what works.
 
 ## Out of scope
 - path/to/file.ts:42 — changed but not called for by the spec
+
+## Stale specs
+- <subsystem> — src/foo.ts changed but docs/specs/foo.md was not updated
 \`\`\`
 
 If a section is empty, omit it. If the diff fully and exactly satisfies the
-spec, say "Diff matches the spec: all requirements implemented, edge cases
-tested, nothing out of scope."
+spec, says nothing out of scope, and leaves no spec stale, say "Diff matches the
+spec: all requirements implemented, edge cases tested, specs current, nothing
+out of scope."
 `;
 }
 
@@ -216,7 +224,9 @@ Steps:
 2. Delegate to the **code-reviewer** subagent for correctness, security, and
    maintainability.
 3. If the change implements something with a spec in \`docs/specs/\` (or a
-   \`SPEC.md\`/\`PLAN.md\`), delegate to the **spec-reviewer** subagent.
+   \`SPEC.md\`/\`PLAN.md\`), or touches a subsystem listed in
+   \`docs/specs/subsystem-map.json\`, delegate to the **spec-reviewer** subagent
+   (it also flags specs left stale by the change).
 4. If the change touches authentication, input handling, secrets, or external
    data, delegate to the **security-reviewer** subagent.
 5. Synthesize all findings into a single list grouped Critical / Warning /
