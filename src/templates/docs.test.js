@@ -1,4 +1,6 @@
 import { describe, it, expect } from 'vitest';
+import { existsSync, readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import {
   generateProjectBrief,
   generateArchitecture,
@@ -131,5 +133,35 @@ describe('generateSubsystemSpecTemplate', () => {
 
   it('points at the subsystem map so drift detection can watch it', () => {
     expect(template).toContain('subsystem-map.json');
+  });
+});
+
+// Dogfood: this repo maintains a real subsystem map for check-drift.sh. If the
+// map references a deleted file or a missing spec, the drift hook would watch a
+// phantom (or never fire) — so keep the map honest with the tree.
+describe('dogfood: repo subsystem-map.json is valid and current', () => {
+  const repoRoot = process.cwd();
+  const mapPath = join(repoRoot, 'docs/specs/subsystem-map.json');
+
+  it('parses and has at least one subsystem', () => {
+    expect(existsSync(mapPath)).toBe(true);
+    const map = JSON.parse(readFileSync(mapPath, 'utf-8'));
+    expect(Array.isArray(map.subsystems)).toBe(true);
+    expect(map.subsystems.length).toBeGreaterThan(0);
+  });
+
+  it('every mapped owning file and spec exists on disk', () => {
+    const map = JSON.parse(readFileSync(mapPath, 'utf-8'));
+    for (const sub of map.subsystems) {
+      for (const file of sub.files) {
+        expect(existsSync(join(repoRoot, file)), `missing file: ${file}`).toBe(
+          true,
+        );
+      }
+      expect(
+        existsSync(join(repoRoot, sub.spec)),
+        `missing spec: ${sub.spec}`,
+      ).toBe(true);
+    }
   });
 });

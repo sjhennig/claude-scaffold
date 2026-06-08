@@ -118,6 +118,12 @@ describe('structured return shapes', () => {
     expect(md).toContain('docs/specs');
   });
 
+  it('spec-reviewer flags specs left stale via the subsystem map', () => {
+    const md = generateSpecReviewerAgent();
+    expect(md).toContain('subsystem-map.json');
+    expect(md).toContain('## Stale specs');
+  });
+
   it('test-runner returns only failing tests', () => {
     const md = generateTestRunnerAgent();
     expect(md).toContain('## Failing tests');
@@ -142,6 +148,10 @@ describe('generateQcCommand', () => {
     expect(cmd).toContain('code-reviewer');
     expect(cmd).toContain('spec-reviewer');
     expect(cmd).toContain('security-reviewer');
+  });
+
+  it('routes subsystem-map changes through the spec-reviewer', () => {
+    expect(cmd).toContain('subsystem-map.json');
   });
 
   it('warns about subagent token cost / checkpoints', () => {

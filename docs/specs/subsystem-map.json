@@ -1,0 +1,14 @@
+{
+  "subsystems": [
+    {
+      "name": "guardrails",
+      "files": ["src/templates/guardrails.js"],
+      "spec": "docs/specs/guardrails.md"
+    },
+    {
+      "name": "qc-agents",
+      "files": ["src/templates/agents.js"],
+      "spec": "docs/specs/qc-agents.md"
+    }
+  ]
+}
