@@ -37,6 +37,8 @@ describe('generateDockerfile', () => {
       'bat',
       'zsh',
       'python3',
+      'bubblewrap',
+      'socat',
     ];
     for (const tool of expectedTools) {
       expect(dockerfile).toContain(tool);

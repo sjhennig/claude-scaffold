@@ -14,6 +14,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     bat \
     zsh \
     sudo \
+    bubblewrap \
+    socat \
     && rm -rf /var/lib/apt/lists/*
 
 # Allow the human developer to use sudo without a password (e.g. ad-hoc

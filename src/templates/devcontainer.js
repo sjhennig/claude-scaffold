@@ -20,6 +20,8 @@ RUN apt-get update && apt-get install -y \\
     zsh \\
     python3 \\
     sudo \\
+    bubblewrap \\
+    socat \\
     && rm -rf /var/lib/apt/lists/*
 
 # Let the node user run privileged commands when needed

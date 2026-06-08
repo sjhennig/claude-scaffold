@@ -239,7 +239,7 @@ describe('run (orchestrator)', () => {
     }
   });
 
-  it('emits both guardrail hook scripts as executable files', async () => {
+  it('emits the guardrail hook scripts as executable files', async () => {
     const config = withConfig({});
     gatherInput.mockResolvedValue(config);
     await run();
@@ -248,6 +248,7 @@ describe('run (orchestrator)', () => {
     for (const script of [
       '.claude/hooks/validate-command.sh',
       '.claude/hooks/verify-gate.sh',
+      '.claude/hooks/sandbox-preflight.sh',
     ]) {
       const full = join(root, script);
       expect(await fileExists(full)).toBe(true);
@@ -269,6 +270,7 @@ describe('run (orchestrator)', () => {
       '.claude/settings.json',
       '.claude/hooks/validate-command.sh',
       '.claude/hooks/verify-gate.sh',
+      '.claude/hooks/sandbox-preflight.sh',
       'package.json',
       'eslint.config.js',
       '.prettierrc',
