@@ -1,5 +1,9 @@
 import { describe, it, expect } from 'vitest';
-import { generateClaudeMd } from './claude-md.js';
+import {
+  generateClaudeMd,
+  claudeMdExceedsBudget,
+  CLAUDE_MD_LINE_BUDGET,
+} from './claude-md.js';
 
 const baseConfig = {
   projectName: 'test-project',
@@ -16,10 +20,11 @@ function withConfig(overrides) {
 }
 
 describe('generateClaudeMd', () => {
-  it('produces output under 100 lines', () => {
+  it('produces output within the leanness budget', () => {
     const output = generateClaudeMd(baseConfig);
     const lineCount = output.split('\n').length;
-    expect(lineCount).toBeLessThan(100);
+    expect(lineCount).toBeLessThan(CLAUDE_MD_LINE_BUDGET);
+    expect(claudeMdExceedsBudget(output)).toBe(false);
   });
 
   it('contains the project name as an H1 heading', () => {
@@ -109,5 +114,16 @@ describe('generateClaudeMd', () => {
       expect(output).not.toMatch(/^## .*database/im);
       expect(output).not.toMatch(/^## .*API routes/im);
     });
+  });
+});
+
+describe('claudeMdExceedsBudget', () => {
+  it('is false for content within the budget', () => {
+    expect(claudeMdExceedsBudget('a\nb\nc')).toBe(false);
+  });
+
+  it('is true for content over the budget', () => {
+    const tooLong = 'x\n'.repeat(CLAUDE_MD_LINE_BUDGET + 1);
+    expect(claudeMdExceedsBudget(tooLong)).toBe(true);
   });
 });

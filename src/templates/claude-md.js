@@ -1,7 +1,18 @@
 /**
  * Generates CLAUDE.md — the quick-reference card Claude Code reads every session.
- * Must stay under 100 lines. Details belong in docs/.
+ * Must stay under CLAUDE_MD_LINE_BUDGET lines. Details belong in docs/.
  */
+
+// The leanness budget (design brief §6): every line in CLAUDE.md competes for
+// the model's attention at session start. The generator warns when output
+// exceeds this, and claude-md.test.js gates it as a hard cap.
+export const CLAUDE_MD_LINE_BUDGET = 100;
+
+// Pure predicate so the warn path is unit-testable without an over-budget
+// config (the built-in templates are always well under the budget).
+export function claudeMdExceedsBudget(content) {
+  return content.split('\n').length > CLAUDE_MD_LINE_BUDGET;
+}
 
 // Commands are identical across the TypeScript frameworks; the only variation
 // is that the no-framework option has no dev server, build step, or typecheck.
@@ -53,7 +64,8 @@ ${rows}
 \`\`\`
 src/          ← Application source code
 docs/         ← Context documents (project brief, architecture)
-docs/specs/   ← Feature specs (spec-driven development)
+docs/specs/   ← Feature & subsystem specs (living docs)
+NOTES.md      ← Decisions log (long-horizon memory)
 .claude/      ← Claude Code settings and hooks
 \`\`\`
 
