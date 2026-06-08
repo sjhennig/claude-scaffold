@@ -6,6 +6,12 @@ on:
   pull_request:
     branches: [main]
 
+# Least privilege: these jobs only read the repo. The boot job in particular
+# runs third-party npm install lifecycle scripts, so it should carry no
+# write-capable token.
+permissions:
+  contents: read
+
 jobs:
   test:
     runs-on: ubuntu-latest
@@ -36,3 +42,40 @@ jobs:
 
       - name: Run tests
         run: npm test
+
+  # Self-verification boot test (design brief §7.2): generate each template and
+  # prove it actually installs + verifies. One leg per template so they run in
+  # parallel and a failure points at the exact template. Separate from `test`
+  # (not gated behind it) so the fast unit/lint feedback isn't held up by the
+  # multi-minute installs. fail-fast off so one template's failure doesn't
+  # cancel the others.
+  boot:
+    name: Boot ${{ matrix.template }}
+    runs-on: ubuntu-latest
+    # Bound a hung or malicious install lifecycle script (default is 360 min).
+    timeout-minutes: 15
+
+    strategy:
+      fail-fast: false
+      matrix:
+        template: [none, node-ts, react-vite-ts, nextjs-ts]
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+        # Don't leave the token in .git/config — this job runs third-party
+        # install scripts in the same workspace.
+        with:
+          persist-credentials: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Boot ${{ matrix.template }}
+        run: npm run test:boot -- ${{ matrix.template }}
