@@ -58,9 +58,10 @@ const packagesByFramework = {
       lint: 'next lint',
       'lint:fix': 'next lint --fix',
       typecheck: 'npx tsc --noEmit',
-      format: "prettier --write 'src/**/*.{ts,tsx}' 'app/**/*.{ts,tsx}'",
-      'format:check':
-        "prettier --check 'src/**/*.{ts,tsx}' 'app/**/*.{ts,tsx}'",
+      // Everything lives under src/ (incl. the App Router at src/app); a stray
+      // 'app/**' glob matches nothing and makes prettier error out.
+      format: "prettier --write 'src/**/*.{ts,tsx}'",
+      'format:check': "prettier --check 'src/**/*.{ts,tsx}'",
       verify: VERIFY_SCRIPT_TS,
     },
     dependencies: {
@@ -74,6 +75,10 @@ const packagesByFramework = {
       '@testing-library/jest-dom': '^6.0.0',
       '@testing-library/react': '^16.0.0',
       '@testing-library/user-event': '^14.0.0',
+      // Next needs @types/node present for TS projects; without it `next lint`
+      // tries to auto-install it mid-run and fails on a peer conflict. The 20.x
+      // line satisfies the vite/vitest peer range (^20.19 || >=22.12).
+      '@types/node': '^20.19.0',
       '@types/react': '^19.0.0',
       '@types/react-dom': '^19.0.0',
       '@vitejs/plugin-react': '^4.3.4',
@@ -329,7 +334,11 @@ export default nextConfig;
 // ---------------------------------------------------------------------------
 
 export function generateSetupTests() {
-  return `import '@testing-library/jest-dom';
+  // The /vitest entry binds jest-dom's matchers to vitest's `expect` directly.
+  // The bare '@testing-library/jest-dom' import calls `expect.extend` against a
+  // *global* expect, which these templates don't enable (tests import `expect`
+  // from 'vitest'), so it throws "expect is not defined" the moment a test runs.
+  return `import '@testing-library/jest-dom/vitest';
 `;
 }
 
@@ -375,7 +384,11 @@ export function generateNextLayout(config) {
   description: '${config.description}',
 };
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default function RootLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
   return (
     <html lang="en">
       <body>{children}</body>
@@ -424,6 +437,46 @@ export function generateSmokeTest() {
 describe('smoke', () => {
   it('runs the test suite', () => {
     expect(true).toBe(true);
+  });
+});
+`;
+}
+
+// Starter tests for the TS framework templates. Every template must ship at
+// least one test so \`npm run verify\` (which runs \`vitest run\`) does not exit
+// non-zero with "no test files found" — which would make the generated
+// project's own Stop gate block on day one. These also exercise the starter UI.
+
+export function generateReactAppTest(config) {
+  // Query the heading by role (not getByText, which would throw if the name
+  // ever rendered in more than one element), and bind the name to a const so a
+  // long project name can't push the assertion line past prettier's 80 cols.
+  return `import { describe, it, expect } from 'vitest';
+import { render, screen } from '@testing-library/react';
+import App from './App.tsx';
+
+// Starter test so the verification gate has something to run on day one.
+describe('App', () => {
+  it('renders the project name', () => {
+    render(<App />);
+    const name = '${config.projectName}';
+    expect(screen.getByRole('heading', { name })).toBeDefined();
+  });
+});
+`;
+}
+
+export function generateNextPageTest(config) {
+  return `import { describe, it, expect } from 'vitest';
+import { render, screen } from '@testing-library/react';
+import Home from './page';
+
+// Starter test so the verification gate has something to run on day one.
+describe('Home', () => {
+  it('renders the project name', () => {
+    render(<Home />);
+    const name = '${config.projectName}';
+    expect(screen.getByRole('heading', { name })).toBeDefined();
   });
 });
 `;
@@ -792,6 +845,7 @@ export function getFrameworkFiles(config) {
         ['index.html', generateIndexHtml(config)],
         ['src/setup-tests.ts', generateSetupTests()],
         ['src/App.tsx', generateApp(config)],
+        ['src/App.test.tsx', generateReactAppTest(config)],
         ['src/main.tsx', generateMain()],
         ['src/vite-env.d.ts', generateViteEnvDts()],
       ];
@@ -809,6 +863,7 @@ export function getFrameworkFiles(config) {
         ['src/setup-tests.ts', generateSetupTests()],
         ['src/app/layout.tsx', generateNextLayout(config)],
         ['src/app/page.tsx', generateNextPage(config)],
+        ['src/app/page.test.tsx', generateNextPageTest(config)],
       ];
 
     case 'node-ts':
@@ -820,6 +875,7 @@ export function getFrameworkFiles(config) {
         ['.prettierrc', generatePrettierRc()],
         ['.prettierignore', generatePrettierIgnore(config)],
         ['src/index.ts', generateNodeIndex(config)],
+        ['src/smoke.test.ts', generateSmokeTest()],
       ];
 
     case 'none':
