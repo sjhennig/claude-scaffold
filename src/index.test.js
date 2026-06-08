@@ -251,6 +251,7 @@ describe('run (orchestrator)', () => {
       '.claude/hooks/validate-command.sh',
       '.claude/hooks/verify-gate.sh',
       '.claude/hooks/sandbox-preflight.sh',
+      '.claude/hooks/check-drift.sh',
     ]) {
       const full = join(root, script);
       expect(await fileExists(full)).toBe(true);
@@ -273,6 +274,7 @@ describe('run (orchestrator)', () => {
       '.claude/hooks/validate-command.sh',
       '.claude/hooks/verify-gate.sh',
       '.claude/hooks/sandbox-preflight.sh',
+      '.claude/hooks/check-drift.sh',
       'package.json',
       'eslint.config.js',
       '.prettierrc',

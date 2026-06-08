@@ -6,6 +6,7 @@ import {
   generateValidateCommandScript,
   generateVerifyGateScript,
   generateSandboxPreflightScript,
+  generateCheckDriftScript,
 } from './guardrails.js';
 
 describe('generateClaudeSettings', () => {
@@ -67,6 +68,14 @@ describe('generateClaudeSettings', () => {
     const command = settings.hooks.SessionStart[0].hooks[0].command;
     expect(command).toContain('$CLAUDE_PROJECT_DIR');
     expect(command).toContain('sandbox-preflight.sh');
+  });
+
+  it('SessionStart also runs the project-dir-rooted drift check', () => {
+    const commands = settings.hooks.SessionStart.map((e) => e.hooks[0].command);
+    expect(commands).toHaveLength(2);
+    const drift = commands.find((c) => c.includes('check-drift.sh'));
+    expect(drift).toBeDefined();
+    expect(drift).toContain('$CLAUDE_PROJECT_DIR');
   });
 });
 
@@ -133,6 +142,38 @@ describe('generateSandboxPreflightScript', () => {
   });
 });
 
+describe('generateCheckDriftScript', () => {
+  const script = generateCheckDriftScript();
+
+  it('is a bash script', () => {
+    expect(script.startsWith('#!/usr/bin/env bash')).toBe(true);
+  });
+
+  it('fails open when jq or git is missing', () => {
+    expect(script).toContain('command -v jq');
+    expect(script).toContain('command -v git');
+  });
+
+  it('no-ops when the subsystem map is absent (fresh-project case)', () => {
+    expect(script).toContain('docs/specs/subsystem-map.json');
+    expect(script).toContain('[ -f "$MAP" ] || exit 0');
+  });
+
+  it('no-ops when the map is empty or malformed', () => {
+    expect(script).toContain('.subsystems | length > 0');
+  });
+
+  it('inspects recent committed history, not the working tree', () => {
+    expect(script).toContain('git -C "$ROOT" rev-list');
+    expect(script).toContain('git -C "$ROOT" diff --name-only');
+    expect(script).toContain('LOOKBACK=');
+  });
+
+  it('is advisory only — never blocks (no exit 2)', () => {
+    expect(script).not.toContain('exit 2');
+  });
+});
+
 // Dogfooding guard: this repo must run the very guardrails it emits.
 // If these fail, the committed .claude/ has drifted from the generator —
 // regenerate it (see scripts in src/templates/guardrails.js).
@@ -168,5 +209,13 @@ describe('dogfood: committed .claude/ matches generated output', () => {
       'utf-8',
     );
     expect(committed).toBe(generateSandboxPreflightScript());
+  });
+
+  it('check-drift.sh matches generateCheckDriftScript', () => {
+    const committed = readFileSync(
+      join(repoRoot, '.claude/hooks/check-drift.sh'),
+      'utf-8',
+    );
+    expect(committed).toBe(generateCheckDriftScript());
   });
 });
