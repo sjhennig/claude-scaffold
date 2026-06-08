@@ -6,7 +6,11 @@ import {
   generateDockerfile,
   generateDevcontainerJson,
 } from './templates/devcontainer.js';
-import { generateClaudeMd } from './templates/claude-md.js';
+import {
+  generateClaudeMd,
+  claudeMdExceedsBudget,
+  CLAUDE_MD_LINE_BUDGET,
+} from './templates/claude-md.js';
 import { generateCommandsReadme } from './templates/hooks.js';
 import {
   generateClaudeSettings,
@@ -58,6 +62,15 @@ export async function run() {
 
   console.log(`\nCreating project at ./${config.projectName} ...\n`);
 
+  // Leanness budget (design brief §6): warn if CLAUDE.md outgrows its cap, since
+  // every line competes for the model's attention at session start.
+  const claudeMd = generateClaudeMd(config);
+  if (claudeMdExceedsBudget(claudeMd)) {
+    console.warn(
+      `Warning: CLAUDE.md is ${claudeMd.split('\n').length} lines, over the ${CLAUDE_MD_LINE_BUDGET}-line budget. Trim it — move detail into docs/ and @-import it.`,
+    );
+  }
+
   // -- Common files (same for all frameworks) ------------------------------
 
   const commonFiles = [
@@ -66,7 +79,7 @@ export async function run() {
     ['.devcontainer/devcontainer.json', generateDevcontainerJson(config)],
 
     // Claude Code — guardrail core (framework-agnostic)
-    ['CLAUDE.md', generateClaudeMd(config)],
+    ['CLAUDE.md', claudeMd],
     ['.claude/settings.json', generateClaudeSettings()],
     ['.claude/hooks/validate-command.sh', generateValidateCommandScript()],
     ['.claude/hooks/verify-gate.sh', generateVerifyGateScript()],
