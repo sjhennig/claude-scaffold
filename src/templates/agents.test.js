@@ -6,7 +6,7 @@ import {
   generateSpecReviewerAgent,
   generateTestRunnerAgent,
   generateSecurityReviewerAgent,
-  generateReviewCommand,
+  generateQcCommand,
   getAgentFiles,
 } from './agents.js';
 
@@ -131,8 +131,8 @@ describe('structured return shapes', () => {
   });
 });
 
-describe('generateReviewCommand', () => {
-  const cmd = generateReviewCommand();
+describe('generateQcCommand', () => {
+  const cmd = generateQcCommand();
 
   it('has a command description', () => {
     expect(cmd.startsWith('---\ndescription:')).toBe(true);
@@ -161,9 +161,9 @@ describe('getAgentFiles', () => {
     expect(paths).toContain('.claude/agents/security-reviewer.md');
   });
 
-  it('emits the /review command under .claude/commands/', () => {
+  it('emits the /qc command under .claude/commands/', () => {
     const paths = files.map(([p]) => p);
-    expect(paths).toContain('.claude/commands/review.md');
+    expect(paths).toContain('.claude/commands/qc.md');
   });
 });
 

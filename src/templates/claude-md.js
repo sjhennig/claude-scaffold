@@ -72,7 +72,7 @@ IMPORTANT: Before starting any task, identify which docs below are relevant and 
 ## Quality Review
 
 Read-only QC subagents live in \`.claude/agents/\` (\`code-reviewer\`,
-\`spec-reviewer\`, \`test-runner\`, \`security-reviewer\`). Run \`/review\` at a
+\`spec-reviewer\`, \`test-runner\`, \`security-reviewer\`). Run \`/qc\` at a
 checkpoint — pre-commit or end of a feature — to review the current diff.
 Subagent review costs several times the tokens of a normal turn, so use it at
 checkpoints, not every turn.

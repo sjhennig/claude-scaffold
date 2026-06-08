@@ -166,13 +166,13 @@ describe('run (orchestrator)', () => {
     expect(await fileExists(join(root, 'index.html'))).toBe(false);
   });
 
-  it('emits the QC subagents and /review command for every framework', async () => {
+  it('emits the QC subagents and /qc command for every framework', async () => {
     const agentFiles = [
       '.claude/agents/code-reviewer.md',
       '.claude/agents/spec-reviewer.md',
       '.claude/agents/test-runner.md',
       '.claude/agents/security-reviewer.md',
-      '.claude/commands/review.md',
+      '.claude/commands/qc.md',
     ];
 
     for (const framework of ['react-vite-ts', 'nextjs-ts', 'node-ts', 'none']) {
