@@ -51,17 +51,16 @@ async function ensureDir(root, relativePath) {
 }
 
 // ---------------------------------------------------------------------------
-// Main
+// Generation
 // ---------------------------------------------------------------------------
 
-export async function run() {
-  console.log('\n🏗️  claude-scaffold — Generate a Claude Code project\n');
-
-  const config = await gatherInput();
-  const root = join(process.cwd(), config.projectName);
-
-  console.log(`\nCreating project at ./${config.projectName} ...\n`);
-
+// Generate a project's full file tree into `root`. Pure of prompts and git —
+// it only computes template strings and writes them — so both the interactive
+// CLI (`run`) and the self-verification boot harness (scripts/boot-test.mjs)
+// can drive generation the same way. Returns the written file list + created
+// dirs so callers can print a summary. Does NOT create `root`'s parent; each
+// file write mkdir's its own subtree.
+export async function generateProject(config, root) {
   // Leanness budget (design brief §6): warn if CLAUDE.md outgrows its cap, since
   // every line competes for the model's attention at session start.
   const claudeMd = generateClaudeMd(config);
@@ -139,6 +138,23 @@ export async function run() {
     await ensureDir(root, dir);
     await writeFile(join(root, dir, '.gitkeep'), '', 'utf-8');
   }
+
+  return { files, emptyDirs };
+}
+
+// ---------------------------------------------------------------------------
+// Main — interactive CLI entry point
+// ---------------------------------------------------------------------------
+
+export async function run() {
+  console.log('\n🏗️  claude-scaffold — Generate a Claude Code project\n');
+
+  const config = await gatherInput();
+  const root = join(process.cwd(), config.projectName);
+
+  console.log(`\nCreating project at ./${config.projectName} ...\n`);
+
+  const { files, emptyDirs } = await generateProject(config, root);
 
   // -- Git init ------------------------------------------------------------
 

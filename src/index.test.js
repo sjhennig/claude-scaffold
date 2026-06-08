@@ -82,6 +82,7 @@ describe('run (orchestrator)', () => {
       'index.html',
       'src/setup-tests.ts',
       'src/App.tsx',
+      'src/App.test.tsx',
       'src/main.tsx',
       'src/vite-env.d.ts',
     ];
@@ -121,6 +122,7 @@ describe('run (orchestrator)', () => {
       'src/setup-tests.ts',
       'src/app/layout.tsx',
       'src/app/page.tsx',
+      'src/app/page.test.tsx',
     ];
 
     for (const file of expectedFiles) {
@@ -158,6 +160,7 @@ describe('run (orchestrator)', () => {
       '.prettierrc',
       '.prettierignore',
       'src/index.ts',
+      'src/smoke.test.ts',
     ];
 
     for (const file of expectedFiles) {
