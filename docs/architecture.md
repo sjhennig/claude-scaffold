@@ -8,12 +8,17 @@ A Node.js CLI that scaffolds new projects pre-configured with Claude Code guardr
 
 ```
 User runs `claude-scaffold`
-  → bin/claude-scaffold.js (entry, error handling)
+  → bin/claude-scaffold.js (entry, subcommand dispatch, error handling)
     → src/index.js (orchestrator)
       → src/prompts.js (gathers user input via inquirer)
       → src/templates/*.js (each returns file contents as strings)
       → fs.writeFileSync (writes generated files to disk)
       → child_process.execSync (optional git init)
+
+User runs `claude-scaffold doctor` (in a scaffolded project)
+  → bin/claude-scaffold.js
+    → src/doctor.js (gathers facts via fs/execSync, judges them with pure
+      evaluate* functions, prints a pass/warn/fail report; exit 1 on failures)
 ```
 
 ## Design Principles
