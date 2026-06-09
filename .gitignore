@@ -8,3 +8,6 @@ coverage/
 # state). Ignored by default like .claude.json; un-ignore deliberately if the
 # team wants to share accumulated review context.
 .claude/agent-memory/
+
+# Personal Claude Code overrides (not shared)
+.claude/settings.local.json

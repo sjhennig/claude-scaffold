@@ -4,6 +4,7 @@ import { join } from 'node:path';
 import {
   generateClaudeSettings,
   GITHUB_MARKETPLACE_SOURCE,
+  PINNED_PLUGIN_REF,
   MARKETPLACE_NAME,
   PLUGIN_NAME,
   PLUGIN_ID,
@@ -289,6 +290,25 @@ describe('marketplace + enablement resolve', () => {
     expect(settings.extraKnownMarketplaces[MARKETPLACE_NAME].source).toEqual(
       GITHUB_MARKETPLACE_SOURCE,
     );
+  });
+
+  // M7: generated projects pin a released tag, not main — an untested plugin
+  // change must not propagate to scaffolded projects until a release is cut.
+  it('the GitHub source is pinned to the release tag', () => {
+    const settings = JSON.parse(generateClaudeSettings());
+    expect(settings.extraKnownMarketplaces[MARKETPLACE_NAME].source.ref).toBe(
+      PINNED_PLUGIN_REF,
+    );
+  });
+
+  // The pin, the plugin manifest, and the marketplace listing must all agree
+  // on one version. This is what turns "bump the plugin version" into a forced
+  // pin update (and a matching `guardrails-v<version>` git tag) in the same
+  // change — see docs/specs/qc-agents.md § Releasing.
+  it('pinned ref matches the plugin + marketplace versions', () => {
+    expect(PINNED_PLUGIN_REF).toBe(`guardrails-v${manifest().version}`);
+    const entry = marketplace().plugins.find((p) => p.name === PLUGIN_NAME);
+    expect(entry.version).toBe(manifest().version);
   });
 });
 

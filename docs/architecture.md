@@ -37,8 +37,9 @@ The CLI keeps emitting the project-local config a plugin **cannot** carry:
 This split is forced by Claude Code — plugin-loaded subagents ignore
 `hooks`/`mcpServers`/`permissionMode` frontmatter, so the verification gate and
 validators must live in CLI-emitted settings. Generated projects reference the
-marketplace via a GitHub source; this repo dogfoods the same plugin via a local
-`directory` source. See `docs/specs/qc-agents.md` and `docs/specs/guardrails.md`.
+marketplace via a GitHub source pinned to a `guardrails-v<version>` release tag
+(plugin updates are a deliberate bump, not a HEAD-follow); this repo dogfoods
+the same plugin unpinned via a local `directory` source. See `docs/specs/qc-agents.md` and `docs/specs/guardrails.md`.
 
 ## Sandbox Model
 
