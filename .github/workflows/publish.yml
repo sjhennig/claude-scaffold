@@ -4,11 +4,12 @@
 # must match package.json's version, and the tagged commit must be on main —
 # so neither a mistyped tag nor a tagged side-branch commit can publish.
 #
-# Auth: NPM_TOKEN repo secret (an npm "automation" token for the
-# @sjhennig/claude-scaffold package). npm Trusted Publishing (OIDC, no
-# long-lived secret) can only be configured on an EXISTING package, so the
-# token path bootstraps the first publish; migrating to Trusted Publishing
-# afterwards is tracked in the distribution spec's open decisions.
+# Auth: npm Trusted Publishing (OIDC) — this repo + this workflow file are
+# registered as the package's trusted publisher on npmjs.com, so no token or
+# secret is involved; the runner's OIDC identity (id-token: write) is the
+# credential, and npm generates provenance automatically. The original
+# NPM_TOKEN bootstrap (Trusted Publishing can't be configured before a
+# package exists) published 1.0.0 and was then retired.
 name: Publish CLI
 
 on:
@@ -17,7 +18,8 @@ on:
 
 permissions:
   contents: read
-  # npm --provenance attests the build via the runner's OIDC identity.
+  # The OIDC identity IS the publish credential under Trusted Publishing
+  # (and feeds the automatic provenance attestation).
   id-token: write
 
 jobs:
@@ -59,6 +61,13 @@ jobs:
             exit 1
           fi
 
+      # Trusted Publishing needs npm >= 11.5.1 (Node 22 bundles 10.x). Pinned
+      # to the v11 line so a future npm major dropping Node 22 can't break an
+      # unattended release. Runs before npm ci so every step — install,
+      # verify, pack, publish — uses the same npm.
+      - name: Update npm for OIDC publishing
+        run: npm install -g npm@11
+
       - name: Install dependencies
         run: npm ci
 
@@ -70,7 +79,10 @@ jobs:
       - name: Pack test
         run: npm run test:pack
 
+      # No token: npm exchanges the runner's OIDC token with the registry's
+      # trusted-publisher config. Provenance is attached automatically.
+      # Verbose logging because npm swallows OIDC-exchange failures silently
+      # (a publisher mismatch otherwise surfaces as an opaque auth error);
+      # npm redacts tokens in logs. Drop once the OIDC path has proven out.
       - name: Publish to npm
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-        run: npm publish --provenance --access public
+        run: npm publish --access public --loglevel verbose
