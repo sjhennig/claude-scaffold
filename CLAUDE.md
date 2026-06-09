@@ -18,6 +18,7 @@ CLI tool that generates guardrailed, AI-first project scaffolding for Claude Cod
 bin/                CLI entry point (claude-scaffold command)
 src/
   index.js          Orchestrator: gathers input, dispatches templates, writes files
+  doctor.js         `claude-scaffold doctor`: guardrail/config health checks
   prompts.js        Interactive prompts (inquirer)
   templates/        Template generators (pure functions → strings)
     claude-md.js    CLAUDE.md generation
@@ -42,7 +43,7 @@ docs/               Architecture and planning documents
 
 - ES Modules (`"type": "module"`), plain JavaScript (no TypeScript)
 - Pure functions for templates: config object in, string out
-- Side effects only in `src/index.js` (file writes, git init)
+- Side effects only in `src/index.js` (file writes, git init) — exception: `src/doctor.js` runs read-only probes (fs reads, injectable exec); its `evaluate*` judges stay pure
 - Conventional commits: `feat|fix|docs|refactor|test|chore(scope): message`
 - Tests colocated: `foo.js` → `foo.test.js` (exception: `plugin.test.js` sits at the repo root — the plugin is markdown with no generator to sit beside)
 

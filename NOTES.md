@@ -21,6 +21,34 @@ entries short and high-signal. Newest at the top.
 
 ---
 
+## 2026-06-09 — `doctor`: warn/fail taxonomy and the side-effect exception
+
+**Context** — M7's `claude-scaffold doctor` (design brief §3) checks machine +
+config health in a scaffolded project. Two non-obvious calls needed making:
+what counts as a _failure_ vs a _warning_, and how a command that inherently
+probes the system squares with "side effects only in `src/index.js`".
+
+**Decision** — (1) **Fail = the guardrails cannot work as configured** (no
+Claude CLI, broken/missing settings.json, missing or non-executable hook
+scripts, enablement that doesn't resolve, pinned tag absent from origin).
+**Warn = degraded or unverifiable** (dormant sandbox, sandbox disabled,
+offline so the tag can't be checked, Claude Code older than the tested
+minimum). Offline is a warn because doctor must be honest without punishing
+air-gapped use; a missing tag is a fail because plugin loading _will_ break.
+(2) `src/doctor.js` keeps the repo's pure/impure split at a different joint:
+`evaluate*` functions are pure (facts in, finding out — unit-testable like
+template generators); I/O lives in `gatherHookStates`/`runDoctor` with an
+**injectable, shell-free exec** (`execFileSync` argv arrays only — QC flagged
+that interpolating settings.json values into a shell string was a command
+injection, since doctor runs in untrusted clones). CLAUDE.md's convention line
+now names the exception.
+
+**Consequences** — Doctor exit codes are CI-usable (1 only on real breakage).
+The shell-free rule is load-bearing: any future doctor check that shells out
+must take argv arrays, never interpolated strings. The Claude Code minimum
+(`CLAUDE_CODE_MIN_VERSION`) is a warn, not a fail, until a version range is
+actually tested against — tightening it is future work, not config.
+
 ## 2026-06-09 — M6: QC subagents ship as the `claude-guardrails` plugin
 
 **Context** — V2 goal #2 / design brief §3: the portable Claude config
