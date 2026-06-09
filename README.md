@@ -128,6 +128,12 @@ The generated `.claude/settings.json` also includes two hooks:
 4. Fill in `docs/project-brief.md` with your project details
 5. Start building with Claude Code
 
+At any point, run `claude-scaffold doctor` from the project root to check
+guardrail health: Claude Code installed, settings valid, hook scripts
+executable, the QC plugin's enablement and pinned release tag resolvable, and
+whether the sandbox is actually active (it reports honestly when it's dormant,
+e.g. on Docker Desktop). Exits non-zero on failures, so it's CI-friendly.
+
 ## The Development Workflow
 
 The scaffolded project isn't just files — it's a methodology. Here's the intended flow:
