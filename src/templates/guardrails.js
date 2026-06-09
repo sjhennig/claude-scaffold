@@ -34,13 +34,24 @@ export const MARKETPLACE_NAME = 'claude-scaffold';
 export const PLUGIN_NAME = 'claude-guardrails';
 export const PLUGIN_ID = `${PLUGIN_NAME}@${MARKETPLACE_NAME}`;
 
+// The release tag generated projects pin their marketplace to. Without a ref
+// they would track main and pick up plugin changes the moment they merge,
+// tested or not; pinning means they only move when a release is cut. Must
+// always equal `guardrails-v<version>` from plugin/.claude-plugin/plugin.json —
+// plugin.test.js enforces that, so bumping the plugin version forces this pin
+// (and a matching git tag) in the same change. Release ritual:
+// docs/specs/qc-agents.md § Releasing.
+export const PINNED_PLUGIN_REF = 'guardrails-v1.0.0';
+
 // Default marketplace source for *generated* projects: the public GitHub repo
-// that hosts this scaffold (and its in-repo plugin). This repo itself dogfoods
-// the same plugin via a local-path source — see generateClaudeSettings's
-// `marketplaceSource` param and guardrails.test.js.
+// that hosts this scaffold (and its in-repo plugin), pinned to the last
+// released tag. This repo itself dogfoods the same plugin unpinned, from its
+// own working tree — see generateClaudeSettings's `marketplaceSource` param
+// and guardrails.test.js.
 export const GITHUB_MARKETPLACE_SOURCE = {
   source: 'github',
   repo: 'sjhennig/claude-scaffold',
+  ref: PINNED_PLUGIN_REF,
 };
 
 // The source this repo uses to load the plugin from its own working tree: a

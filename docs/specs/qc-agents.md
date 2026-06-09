@@ -51,7 +51,13 @@ uses a local `directory` source):
 
 ```json
 "extraKnownMarketplaces": {
-  "claude-scaffold": { "source": { "source": "github", "repo": "sjhennig/claude-scaffold" } }
+  "claude-scaffold": {
+    "source": {
+      "source": "github",
+      "repo": "sjhennig/claude-scaffold",
+      "ref": "guardrails-v1.0.0"
+    }
+  }
 },
 "enabledPlugins": { "claude-guardrails@claude-scaffold": true }
 ```
@@ -100,17 +106,41 @@ content is identical. `guardrails.test.js` asserts this repo's settings match
   update-independence (design brief §3); the repo's own local source sidesteps
   it for dogfooding.
 
-## Known gaps (tracked for M7)
+## Releasing
 
-- **The GitHub marketplace source is unpinned** (`GITHUB_MARKETPLACE_SOURCE` has
-  no `ref`). Generated projects therefore float to the repo's default-branch
-  HEAD: anyone who can push to `main` ships new subagent instructions and tool
-  grants into every downstream project on its next plugin sync. M6 ships it this
-  way on purpose — there is no release tag yet, and pinning to a non-existent tag
-  would break plugin loading. M7 (marketplace publish/pin) must add a `ref`
-  pinned to a tag matching the plugin's `version`, so updates become a deliberate
-  bump rather than an implicit HEAD-follow. Until then, the trust boundary is the
-  scaffold repo's push access.
+Generated projects pin the marketplace to a **release tag** (M7): the GitHub
+source carries `ref: PINNED_PLUGIN_REF` (`guardrails-v<version>`), so plugin
+changes reach downstream projects only when a release is cut — never by merely
+landing on `main`. The dogfood source stays unpinned (working tree) so this repo
+always exercises the in-development plugin.
+
+Three version strings must agree, enforced by `plugin.test.js`:
+`plugin/.claude-plugin/plugin.json` `version`, the marketplace entry's
+`version`, and `PINNED_PLUGIN_REF` in `src/templates/guardrails.js`. Bumping any
+one forces the others in the same change.
+
+To cut a release:
+
+1. Bump `version` in `plugin.json` + `marketplace.json` and `PINNED_PLUGIN_REF`
+   (one PR; tests fail until all three agree).
+2. Get CI green **and** run the manual `agent-smoke` workflow_dispatch job (live
+   subagent invocation) before merging.
+3. Merge, then tag that merge commit:
+   `git tag guardrails-v<version> && git push origin guardrails-v<version>`.
+   The tag must point at a commit whose `plugin.json` carries the same version.
+
+Until the tag is pushed, freshly generated projects reference a missing ref and
+can't fetch the plugin — push the tag immediately after merging a version bump.
+
+**Bootstrap caveat:** the ritual above triggers on a version _bump_, so the very
+first pin (`guardrails-v1.0.0`, whose version already shipped unpinned in M6)
+had no bumping PR to force tag creation. The tag was therefore created and
+pushed _before_ merging the pin change, pointing at the M6 merge commit that
+already carried `version: 1.0.0`. If the pin is ever rebuilt from scratch,
+repeat that order: tag first, merge the pin second — QC caught this as the one
+gap the version-agreement tests cannot see (they compare strings across files;
+nothing keyless can check a tag exists on origin — `claude-scaffold doctor`
+covers it at runtime instead).
 
 ## Open decisions
 

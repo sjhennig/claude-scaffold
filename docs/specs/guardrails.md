@@ -40,7 +40,8 @@ generateClaudeSettings({ marketplaceSource } = {}) -> string
 // Plugin enablement constants (also exported):
 MARKETPLACE_NAME = "claude-scaffold"   PLUGIN_NAME = "claude-guardrails"
 PLUGIN_ID = "claude-guardrails@claude-scaffold"
-GITHUB_MARKETPLACE_SOURCE = { source: "github", repo: "sjhennig/claude-scaffold" }
+PINNED_PLUGIN_REF = "guardrails-v<version>"  // must match plugin.json version (plugin.test.js)
+GITHUB_MARKETPLACE_SOURCE = { source: "github", repo: "sjhennig/claude-scaffold", ref: PINNED_PLUGIN_REF }
 LOCAL_MARKETPLACE_SOURCE  = { source: "directory", path: "." }
 
 generateValidateCommandScript()  -> string   // PreToolUse Bash denylist (exit 2 = block)
