@@ -21,6 +21,31 @@ entries short and high-signal. Newest at the top.
 
 ---
 
+## 2026-06-09 — M8 planned: CLI ships as a scoped npm package
+
+**Context** — Kickoff currently requires clone + `npm install` + `npm link` —
+the weakest part of the UX for the protected-new-builder audience. Planning
+M8 surfaced that the unscoped npm name `claude-scaffold` is **already taken**
+by an unrelated Claude Code tool (pyramidheadshark's, v2.7.x).
+
+**Decision** — Three calls taken with the author: (1) publish as the scoped
+**`@sjhennig/claude-scaffold`** — the binary stays `claude-scaffold` (bin
+field ≠ package name); rejected: GitHub-only npx (slow, unversioned) and
+hunting for a fresh unscoped name. (2) **Non-interactive mode is in scope** —
+flags for every prompt + `--yes`, since the one-liner is the milestone's whole
+point. (3) **CI-publish on `cli-vX.Y.Z` tags** (npm Trusted Publishing
+preferred over a long-lived token), keeping the CLI version stream independent
+of the plugin's `guardrails-v*` tags per the M7 decision. Plan with
+workstreams and acceptance criteria: `docs/dev/m8-deployment-plan.md`.
+
+**Consequences** — Users will see two similarly-named packages on npm; the
+README must disambiguate. A pack test joins CI (the self-verification
+philosophy applied to the tarball: prove the published artifact scaffolds, not
+just the working tree). Bootstrap ordering matters as it did for
+`guardrails-v1.0.0`, but reversed: that tag had to exist _before_ the pin
+merged (downstream references it); the CLI tag comes _after_ the publish
+workflow merges, because the tag is what fires it.
+
 ## 2026-06-09 — M7: tag-pinned plugin releases, starter skill, doctor
 
 **Context** — M7 (design brief §3): distribute the plugin so generated projects
