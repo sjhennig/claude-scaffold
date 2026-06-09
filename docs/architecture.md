@@ -62,7 +62,7 @@ tradeoff) for forcing it on.
 
 - `bin/` — Executable entry point (referenced by package.json `"bin"` field)
 - `src/templates/` — One file per output category, not per output file. A single template function may generate multiple related files (e.g., `devcontainer.js` produces both Dockerfile and devcontainer.json).
-- `plugin/` — The `claude-guardrails` plugin (manifest under `.claude-plugin/`, subagents in `agents/`, `/qc` in `commands/`). Source of truth, edited directly — not generated. The CLI ships only the settings that enable it.
+- `plugin/` — The `claude-guardrails` plugin (manifest under `.claude-plugin/`, subagents in `agents/`, `/qc` in `commands/`, skills in `skills/`). Source of truth, edited directly — not generated. The CLI ships only the settings that enable it.
 - `.claude-plugin/marketplace.json` — Repo-root marketplace listing the plugin (`source: ./plugin`); referenced by generated projects (GitHub source) and this repo (local source).
 - `docs/` — Human and AI context. Not loaded into Claude's context by default — referenced via @-imports from CLAUDE.md.
 - `.claude/` — Claude Code configuration the CLI emits: settings.json (incl. plugin enablement) + hooks. (The QC subagents/skills are plugin-borne, not here.)

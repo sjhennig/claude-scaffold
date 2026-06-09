@@ -254,6 +254,53 @@ describe('plugin layout + manifest', () => {
   });
 });
 
+// M7: the plugin also carries skills. Same loadability bar as the agents:
+// every skill is a `skills/<name>/SKILL.md` at the plugin ROOT with frontmatter
+// whose `name` matches its directory — the misplacements/mismatches Claude Code
+// silently skips. Discovery-based so future skills are covered automatically.
+describe('plugin skills', () => {
+  const SKILLS_DIR = join(PLUGIN_DIR, 'skills');
+  const skillDirs = readdirSync(SKILLS_DIR, { withFileTypes: true })
+    .filter((d) => d.isDirectory())
+    .map((d) => d.name);
+  const skillMd = (dir) => read(`plugin/skills/${dir}/SKILL.md`);
+
+  it('ships the guardrails-help starter skill', () => {
+    expect(skillDirs).toContain('guardrails-help');
+  });
+
+  it('skills live at the plugin root, not under .claude-plugin/', () => {
+    expect(existsSync(join(PLUGIN_DIR, '.claude-plugin', 'skills'))).toBe(
+      false,
+    );
+  });
+
+  for (const dir of skillDirs) {
+    describe(dir, () => {
+      it('has a SKILL.md', () => {
+        expect(existsSync(join(SKILLS_DIR, dir, 'SKILL.md'))).toBe(true);
+      });
+
+      it('frontmatter name matches the directory', () => {
+        expect(frontmatter(skillMd(dir))).toContain(`name: ${dir}`);
+      });
+
+      it('has a trigger-bearing description ("Use when...")', () => {
+        const desc = frontmatter(skillMd(dir))
+          .split('\n')
+          .find((l) => l.startsWith('description:'));
+        expect(desc?.replace('description:', '').trim()).toBeTruthy();
+        expect(desc.toLowerCase()).toContain('use when');
+      });
+
+      it('has a non-empty body', () => {
+        const body = skillMd(dir).split(/\n---\n/)[1];
+        expect(body.trim().length).toBeGreaterThan(0);
+      });
+    });
+  }
+});
+
 describe('marketplace + enablement resolve', () => {
   it('marketplace.json is valid and lists the plugin', () => {
     const mk = marketplace();

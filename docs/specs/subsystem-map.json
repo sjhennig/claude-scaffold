@@ -14,7 +14,8 @@
         "plugin/agents/spec-reviewer.md",
         "plugin/agents/test-runner.md",
         "plugin/agents/security-reviewer.md",
-        "plugin/commands/qc.md"
+        "plugin/commands/qc.md",
+        "plugin/skills/guardrails-help/SKILL.md"
       ],
       "spec": "docs/specs/qc-agents.md"
     },
