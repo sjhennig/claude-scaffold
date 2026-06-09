@@ -82,5 +82,3 @@ scripts/boot-test.mjs [template...]   // default: all four templates
   reviewer subagent loads and is invokable." Structural coverage exists
   (`agents.test.js`: frontmatter, read-only tools, dogfood byte-match), but true
   runtime invocation needs a live Claude and has no automated harness in CI.
-- `next lint` is deprecated (removed in Next.js 16); the `nextjs-ts` lint script
-  will need migrating to the ESLint CLI before then.

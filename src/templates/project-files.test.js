@@ -91,6 +91,11 @@ describe('generateEslintConfig', () => {
       expect(output).toContain('next/typescript');
     });
 
+    it('ignores build output so the eslint CLI does not lint it', () => {
+      expect(output).toContain('ignores');
+      expect(output).toContain('.next');
+    });
+
     it('is generated as .mjs in getFrameworkFiles', () => {
       const files = getFrameworkFiles(config);
       const eslintEntry = files.find(([path]) =>
@@ -306,6 +311,12 @@ describe('generatePackageJson', () => {
 
     it('scripts.dev is next dev', () => {
       expect(pkg.scripts.dev).toBe('next dev');
+    });
+
+    it('lint invokes the eslint CLI, not deprecated next lint', () => {
+      expect(pkg.scripts.lint).toBe('eslint .');
+      expect(pkg.scripts.lint).not.toContain('next lint');
+      expect(pkg.scripts['lint:fix']).toBe('eslint . --fix');
     });
 
     it('dependencies includes next', () => {
