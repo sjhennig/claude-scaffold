@@ -21,11 +21,10 @@ plugin's (`guardrails-vX.Y.Z`) — see the M7/M8 NOTES decisions.
 - `scripts/pack-test.mjs` (`npm run test:pack`) — self-verification of the
   artifact: packs the working tree, asserts tarball contents (runtime files
   in, colocated tests out), installs the tarball into a clean prefix, proves
-  the installed bin executes, and scaffolds + verifies a `none` project from
-  the installed package. Runs as the per-PR `pack` CI job and as the publish
-  workflow's last gate. (Lands with the packaging PR; register it in the
-  subsystem map once both it and this spec are on main — the map's dogfood
-  test requires mapped files to exist on disk.)
+  the installed bin executes, and scaffolds + verifies a `none` project by
+  **driving the installed bin with the flag mode**
+  (`<name> --framework none --no-git --yes`) — the exact npx-user path. Runs
+  as the per-PR `pack` CI job and as the publish workflow's last gate.
 - `.github/workflows/publish.yml` — publishes on `cli-v*` tag push: tag/version
   match guard → `npm run verify` → `npm run test:pack` →
   `npm publish --provenance --access public`.
