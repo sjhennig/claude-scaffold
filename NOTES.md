@@ -21,6 +21,36 @@ entries short and high-signal. Newest at the top.
 
 ---
 
+## 2026-06-09 — Subagent invocation: structural proxies in CI, live smoke opt-in
+
+**Context** — Design brief §7.3/§11 wants CI to confirm the reviewer subagent
+"loads, is invokable by name, and returns the structured shape." True runtime
+invocation needs a live Claude; this repo's CI has no `ANTHROPIC_API_KEY`. It
+was the last open decision in `docs/specs/self-verification.md`.
+
+**Decision** — Split into two layers. (1) **Always-on loadability proxies** in
+`agents.test.js`: frontmatter parses, every declared tool is a real Claude Code
+tool (catches typos Claude Code silently drops), agent `name` matches filename,
+and `/qc` only delegates to agents that ship. These are the strongest
+"it would load" signals obtainable without a key. (2) **Opt-in live smoke
+harness** `scripts/agent-smoke.mjs` (`npm run test:agent-smoke`): invokes the
+`code-reviewer` subagent by name via `claude -p --agent code-reviewer` against a
+generated project and asserts a non-empty review comes back; SKIPs (exit 0)
+without a key or CLI so it's never a false red. Wired as a manual
+`workflow_dispatch` `agent-smoke` CI job, not a per-PR gate. Runs least-privilege
+(`--permission-mode dontAsk` + a scoped read-only allowlist) so the agent can't
+run arbitrary Bash — a QC security finding flagged that `bypassPermissions` plus
+the agent's `Bash` tool would let the model `printenv` the API key into CI logs.
+
+**Consequences** — Two accepted residuals: (1) a runtime-only regression isn't
+caught on every PR, only by the manual/opt-in run (release-time or after touching
+`agents.js`); (2) the live run smoke-tests only `code-reviewer` as a
+representative — the other agents are proven loadable by the structural proxies,
+not invoked live. Worth it — keyless CI can't do better, and faking a live
+invocation would be the exact dishonesty the guardrail philosophy rejects.
+`scripts/agent-smoke.mjs` is registered in the subsystem map so the drift hook
+watches it. Closes M5.
+
 ## 2026-06-09 — nextjs-ts lints via the ESLint CLI, not `next lint`
 
 **Context** — `next lint` is deprecated and removed in Next.js 16; the
