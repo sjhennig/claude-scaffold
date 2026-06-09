@@ -111,5 +111,16 @@
       ],
       "allowUnixSockets": []
     }
+  },
+  "extraKnownMarketplaces": {
+    "claude-scaffold": {
+      "source": {
+        "source": "directory",
+        "path": "."
+      }
+    }
+  },
+  "enabledPlugins": {
+    "claude-guardrails@claude-scaffold": true
   }
 }

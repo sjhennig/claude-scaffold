@@ -9,8 +9,11 @@ emits. Registered in docs/specs/subsystem-map.json so the drift hook watches it.
 
 The framework-agnostic guardrail core: the pure generators for the project-local
 Claude Code config every scaffolded project receives, regardless of framework.
-It produces `.claude/settings.json` (permissions, sandbox, hooks) and the four
-hook scripts. It is NOT responsible for framework files, docs, or agents.
+It produces `.claude/settings.json` (permissions, sandbox, hooks, **and the
+plugin enablement**) and the four hook scripts. It is NOT responsible for
+framework files, docs, or the QC subagents themselves (those ship as the
+`claude-guardrails` plugin — see [[qc-agents]]); it only emits the settings that
+_enable_ that plugin.
 
 This repo dogfoods these generators: its committed `.claude/` is regenerated from
 here, and `guardrails.test.js`'s `dogfood:` block asserts the two match.
@@ -25,11 +28,20 @@ here, and `guardrails.test.js`'s `dogfood:` block asserts the two match.
 VERIFY_SCRIPT_TS : string   // "npm run format:check && lint && typecheck && test"
 VERIFY_SCRIPT_JS : string   // same, minus typecheck (no-framework / JS templates)
 
-generateClaudeSettings() -> string
+generateClaudeSettings({ marketplaceSource } = {}) -> string
   // JSON for .claude/settings.json: permissions.allow/deny, hooks
   // (PreToolUse Bash, PostToolUse Edit|Write prettier, Stop verify-gate,
-  // SessionStart [sandbox-preflight, check-drift]), and sandbox config.
+  // SessionStart [sandbox-preflight, check-drift]), sandbox config, and the
+  // claude-guardrails plugin enablement (extraKnownMarketplaces +
+  // enabledPlugins). `marketplaceSource` defaults to GITHUB_MARKETPLACE_SOURCE
+  // (what generated projects get); this repo passes LOCAL_MARKETPLACE_SOURCE.
   // Trailing newline. Must be valid JSON.
+
+// Plugin enablement constants (also exported):
+MARKETPLACE_NAME = "claude-scaffold"   PLUGIN_NAME = "claude-guardrails"
+PLUGIN_ID = "claude-guardrails@claude-scaffold"
+GITHUB_MARKETPLACE_SOURCE = { source: "github", repo: "sjhennig/claude-scaffold" }
+LOCAL_MARKETPLACE_SOURCE  = { source: "directory", path: "." }
 
 generateValidateCommandScript()  -> string   // PreToolUse Bash denylist (exit 2 = block)
 generateVerifyGateScript()       -> string   // Stop gate: `npm run verify`, exit 2 = keep working
@@ -52,6 +64,15 @@ generateCheckDriftScript()       -> string   // SessionStart: warn on spec drift
   script. They never name `typecheck`/`test`/`lint` directly, so the same core
   works for every framework.
 - `allowUnixSockets` nests under `sandbox.network` (schema correctness).
+- **Plugin enablement, not plugin content.** The settings carry only the
+  `extraKnownMarketplaces` + `enabledPlugins` reference; the subagents/`/qc`
+  live in the [[qc-agents]] plugin. The guardrail behavior a plugin _cannot_
+  carry (hooks, permissions, sandbox) stays here by design — plugin-loaded
+  agents ignore `hooks`/`mcpServers`/`permissionMode` frontmatter (design
+  brief §3).
+- **`extraKnownMarketplaces[].source` must be an object** with a `source`
+  discriminator (`github`/`directory`/…), never a bare path string — the
+  settings schema rejects a string.
 
 ## Edge cases
 

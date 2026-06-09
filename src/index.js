@@ -19,7 +19,6 @@ import {
   generateSandboxPreflightScript,
   generateCheckDriftScript,
 } from './templates/guardrails.js';
-import { getAgentFiles } from './templates/agents.js';
 import {
   generateProjectBrief,
   generateArchitecture,
@@ -86,8 +85,11 @@ export async function generateProject(config, root) {
     ['.claude/hooks/check-drift.sh', generateCheckDriftScript()],
     ['.claude/commands/README.md', generateCommandsReadme()],
 
-    // Claude Code — quality-control subagents + /qc command
-    ...getAgentFiles(),
+    // Claude Code — Layer 5 (independent review) ships as the versioned
+    // `claude-guardrails` plugin, enabled via .claude/settings.json above
+    // (extraKnownMarketplaces + enabledPlugins). The QC subagents and /qc
+    // command are NOT emitted as project-local files — they update
+    // independently of the scaffold. See src/templates/guardrails.js.
 
     // Docs
     ['docs/project-brief.md', generateProjectBrief(config)],

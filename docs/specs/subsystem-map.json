@@ -7,7 +7,15 @@
     },
     {
       "name": "qc-agents",
-      "files": ["src/templates/agents.js"],
+      "files": [
+        "plugin/.claude-plugin/plugin.json",
+        ".claude-plugin/marketplace.json",
+        "plugin/agents/code-reviewer.md",
+        "plugin/agents/spec-reviewer.md",
+        "plugin/agents/test-runner.md",
+        "plugin/agents/security-reviewer.md",
+        "plugin/commands/qc.md"
+      ],
       "spec": "docs/specs/qc-agents.md"
     },
     {

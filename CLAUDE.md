@@ -23,10 +23,16 @@ src/
     claude-md.js    CLAUDE.md generation
     devcontainer.js Dockerfile + devcontainer.json
     docs.js         Project documentation templates
-    guardrails.js   Framework-agnostic core: settings.json + hook scripts
+    guardrails.js   Framework-agnostic core: settings.json (incl. plugin enablement) + hook scripts
     hooks.js        .claude/commands README (re-exports guardrails settings)
     project-files.js Framework configs/source (incl. 'none' = guardrails only)
-.claude/            Claude Code settings, hooks, and agents
+plugin/             The claude-guardrails plugin (QC subagents + /qc) — source of truth, not generated
+  .claude-plugin/   plugin.json manifest
+  agents/           code/spec/security-reviewer, test-runner
+  commands/         qc.md
+.claude-plugin/     Repo-root marketplace.json listing the plugin (source: ./plugin)
+plugin.test.js      Validates the committed plugin files + manifests + enablement
+.claude/            Claude Code settings + hooks the CLI emits (QC agents are plugin-borne)
 .devcontainer/      Dev container for sandboxed development
 docs/               Architecture and planning documents
 ```
@@ -37,7 +43,7 @@ docs/               Architecture and planning documents
 - Pure functions for templates: config object in, string out
 - Side effects only in `src/index.js` (file writes, git init)
 - Conventional commits: `feat|fix|docs|refactor|test|chore(scope): message`
-- Tests colocated: `foo.js` → `foo.test.js`
+- Tests colocated: `foo.js` → `foo.test.js` (exception: `plugin.test.js` sits at the repo root — the plugin is markdown with no generator to sit beside)
 
 ## Rules
 

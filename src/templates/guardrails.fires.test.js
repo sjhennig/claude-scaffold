@@ -23,7 +23,8 @@ import {
 // the check-drift.sh behavioral suite. bash + npm + jq only, so skip on Windows.
 //
 // Subagent loading / structured-shape / read-only tools are verified in
-// agents.test.js (frontmatter parse, loadability proxies, dogfood byte-match).
+// plugin.test.js (frontmatter parse, loadability proxies, manifest + enablement
+// resolution against the committed plugin/ files).
 // True *runtime* invocation needs a live Claude, so it is not faked here — it
 // lives in the opt-in scripts/agent-smoke.mjs harness (see [[self-verification]]).
 

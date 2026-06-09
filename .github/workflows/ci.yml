@@ -84,12 +84,13 @@ jobs:
         run: npm run test:boot -- ${{ matrix.template }}
 
   # Opt-in subagent runtime smoke test (design brief §7.3 / §11): proves a
-  # generated project's code-reviewer subagent loads, is invokable by name, and
-  # returns a review against a live Claude — the one self-verification layer that
-  # needs an API key and so can't run on every PR. Manual-only (workflow_dispatch).
-  # Without the ANTHROPIC_API_KEY secret the script SKIPs cleanly (exit 0), so a
-  # fork without the secret won't fail. Normal CI relies on the always-on
-  # structural loadability proxies in agents.test.js instead.
+  # generated project loads the claude-guardrails plugin and its code-reviewer
+  # subagent is invokable by name and returns a review against a live Claude —
+  # the one self-verification layer that needs an API key and so can't run on
+  # every PR. Manual-only (workflow_dispatch). Without the ANTHROPIC_API_KEY
+  # secret the script SKIPs cleanly (exit 0), so a fork without the secret won't
+  # fail. Normal CI relies on the always-on structural loadability +
+  # enablement-resolution proxies in plugin.test.js instead.
   agent-smoke:
     if: github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest

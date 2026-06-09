@@ -13,8 +13,10 @@ export function generateCommandsReadme() {
 
 This directory contains custom slash commands for Claude Code.
 
-\`qc.md\` ships here already — type \`/qc\` to run a quality-control checkpoint
-on the current diff using the review subagents in \`.claude/agents/\`.
+\`/qc\` ships in the \`claude-guardrails\` plugin (enabled in
+\`.claude/settings.json\`) — type \`/qc\` to run a quality-control checkpoint on
+the current diff using the plugin's read-only review subagents. Commands you
+add to this directory work the same way as that one.
 
 ## How to Create a Command
 
