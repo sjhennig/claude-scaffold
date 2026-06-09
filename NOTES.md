@@ -21,6 +21,31 @@ entries short and high-signal. Newest at the top.
 
 ---
 
+## 2026-06-09 — M7: tag-pinned plugin releases, starter skill, doctor
+
+**Context** — M7 (design brief §3): distribute the plugin so generated projects
+get a _tested_ version, seed the `skills/` slot, ship `doctor`. Two decisions
+taken with the author; one merge-order trap discovered.
+
+**Decision** — (1) **Tag scheme: `guardrails-vX.Y.Z`** (plugin-scoped), not
+repo-wide `vX.Y.Z` — plugin releases stay independent of any future CLI/npm
+versioning, which is the point of the CLI/plugin split. Generated projects pin
+`ref: guardrails-v<version>`; the dogfood source stays unpinned (working tree).
+(2) **Starter skill: `guardrails-help`** (chosen over spec-maintenance and
+checkpoint candidates) — explains the five layers, diagnoses
+hook/sandbox/plugin events, gives a relax-safely ladder; serves the protected
+new-builder audience. (3) Release ritual + first-tag bootstrap (tag _before_
+merging the pin — QC caught that pinning a nonexistent tag strands fresh
+scaffolds) documented in `docs/specs/qc-agents.md` § Releasing.
+
+**Consequences** — Plugin changes now reach downstream only via a release:
+bump plugin.json + marketplace.json + `PINNED_PLUGIN_REF` (tests force
+agreement), agent-smoke live, merge, tag the merge commit. The skill shipped
+in `guardrails-v1.1.0` — content merged to main is invisible downstream until
+tagged. Process lesson: **stacked PRs retarget to main only if the base branch
+is deleted at merge** — #27 silently merged into its base branch and had to be
+cherry-picked to main (#28); avoid stacking, or delete branches on merge.
+
 ## 2026-06-09 — `doctor`: warn/fail taxonomy and the side-effect exception
 
 **Context** — M7's `claude-scaffold doctor` (design brief §3) checks machine +

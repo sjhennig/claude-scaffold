@@ -10,7 +10,7 @@
       "name": "claude-guardrails",
       "source": "./plugin",
       "description": "Read-only QC subagents + the /qc checkpoint command (Layer 5: independent review).",
-      "version": "1.0.0",
+      "version": "1.1.0",
       "category": "code-quality"
     }
   ]
