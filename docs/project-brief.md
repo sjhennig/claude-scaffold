@@ -31,7 +31,8 @@ Builders who use Claude Code as their primary development interface and want max
 - **M3** ✅: Context network (docs templates, drift detection, NOTES.md convention)
 - **M4** ✅: Self-verification suite in CI (generation content + boot-all-four + guardrail-fires; see `docs/specs/self-verification.md`)
 - **M5** ✅: Closed the self-verification open decisions — migrated `nextjs-ts` off deprecated `next lint`, and split subagent-invocation coverage into always-on loadability proxies + an opt-in live smoke harness. (The four framework templates themselves shipped earlier and already boot in CI.)
-- **M6** ⬅️ next: Versioned plugin (V2 goal #2) — carry the subagents/skills/commands as a plugin updateable independently of the scaffold
+- **M6** ✅: Versioned plugin (V2 goal #2) — the QC subagents + `/qc` now ship as the `claude-guardrails` plugin (repo-root marketplace; CLI emits only the `extraKnownMarketplaces`+`enabledPlugins` enablement), updateable independently of the scaffold. This repo dogfoods it via a local marketplace source. Self-verification extended with plugin loadability + enablement-resolution proxies. See `docs/specs/qc-agents.md`.
+- **M7** ⬅️ next: Plugin distribution + skills — publish/pin the marketplace (tag-based versioning so generated projects pin a tested ref), seed a starter skill in the plugin's `skills/` slot, and add a `claude-scaffold doctor` that checks installed Claude Code version + plugin/config health (design brief §3).
 
 ## Out of Scope
 

@@ -26,7 +26,33 @@ export const VERIFY_SCRIPT_TS =
 export const VERIFY_SCRIPT_JS =
   'npm run format:check && npm run lint && npm test';
 
-export function generateClaudeSettings() {
+// The versioned plugin that carries the portable Claude config (QC subagents +
+// the /qc command, Layer 5). The CLI emits only the *enablement* here; the
+// plugin's content lives in the `claude-scaffold` marketplace, updated
+// independently of the scaffold. See docs/specs/qc-agents.md.
+export const MARKETPLACE_NAME = 'claude-scaffold';
+export const PLUGIN_NAME = 'claude-guardrails';
+export const PLUGIN_ID = `${PLUGIN_NAME}@${MARKETPLACE_NAME}`;
+
+// Default marketplace source for *generated* projects: the public GitHub repo
+// that hosts this scaffold (and its in-repo plugin). This repo itself dogfoods
+// the same plugin via a local-path source — see generateClaudeSettings's
+// `marketplaceSource` param and guardrails.test.js.
+export const GITHUB_MARKETPLACE_SOURCE = {
+  source: 'github',
+  repo: 'sjhennig/claude-scaffold',
+};
+
+// The source this repo uses to load the plugin from its own working tree: a
+// `directory` source pointing at the repo root, which holds
+// `.claude-plugin/marketplace.json`. (extraKnownMarketplaces sources must be
+// objects with a `source` discriminator — a bare path string is rejected by the
+// settings schema.)
+export const LOCAL_MARKETPLACE_SOURCE = { source: 'directory', path: '.' };
+
+export function generateClaudeSettings({
+  marketplaceSource = GITHUB_MARKETPLACE_SOURCE,
+} = {}) {
   const settings = {
     permissions: {
       allow: [
@@ -161,6 +187,17 @@ export function generateClaudeSettings() {
         allowedDomains: ['registry.npmjs.org', 'github.com'],
         allowUnixSockets: [],
       },
+    },
+    // Independent-review layer (Layer 5) ships as a versioned plugin, not as
+    // committed .claude/agents files — so the reviewers update independently of
+    // the scaffold. The plugin's portable config (subagents + /qc) loads from
+    // the marketplace below; the guardrail config a plugin CANNOT carry (hooks,
+    // permissions, sandbox above) stays here, CLI-emitted.
+    extraKnownMarketplaces: {
+      [MARKETPLACE_NAME]: { source: marketplaceSource },
+    },
+    enabledPlugins: {
+      [PLUGIN_ID]: true,
     },
   };
 

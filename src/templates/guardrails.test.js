@@ -16,6 +16,7 @@ import {
   generateVerifyGateScript,
   generateSandboxPreflightScript,
   generateCheckDriftScript,
+  LOCAL_MARKETPLACE_SOURCE,
 } from './guardrails.js';
 
 describe('generateClaudeSettings', () => {
@@ -193,7 +194,14 @@ describe('dogfood: committed .claude/ matches generated output', () => {
     const committed = JSON.parse(
       readFileSync(join(repoRoot, '.claude/settings.json'), 'utf-8'),
     );
-    expect(committed).toEqual(JSON.parse(generateClaudeSettings()));
+    // This repo dogfoods the plugin via a local-path marketplace source (it
+    // hosts the plugin), so it compares against the local-source variant;
+    // generated projects get the default GitHub source.
+    expect(committed).toEqual(
+      JSON.parse(
+        generateClaudeSettings({ marketplaceSource: LOCAL_MARKETPLACE_SOURCE }),
+      ),
+    );
   });
 
   it('validate-command.sh matches generateValidateCommandScript', () => {

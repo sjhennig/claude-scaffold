@@ -21,6 +21,43 @@ entries short and high-signal. Newest at the top.
 
 ---
 
+## 2026-06-09 — M6: QC subagents ship as the `claude-guardrails` plugin
+
+**Context** — V2 goal #2 / design brief §3: the portable Claude config
+(subagents, `/qc`) was emitted as committed `.claude/agents/` files by
+`src/templates/agents.js`, freezing a snapshot that can't be updated without
+re-scaffolding. The brief calls for a versioned plugin the CLI _enables_ while
+still emitting the project-local config a plugin can't carry (hooks/permissions/
+sandbox).
+
+**Decision** — Stand up an in-repo plugin: `plugin/` (manifest under
+`.claude-plugin/`, `agents/`, `commands/`) listed by a repo-root
+`.claude-plugin/marketplace.json` (`source: ./plugin`). Plugin name
+`claude-guardrails`, marketplace `claude-scaffold`, enable id
+`claude-guardrails@claude-scaffold`. Decisions taken with the author: (1)
+**in-repo, GitHub-sourced** marketplace; (2) **plugin-only** — generated
+projects no longer commit the agents; (3) **plain files** are the source of
+truth — `agents.js` generators retired (deleted, with `agents.test.js`);
+`plugin.test.js` (repo root) replaces the dogfood/loadability tests and adds
+manifest + enablement-resolution proxies. `generateClaudeSettings` now emits
+`extraKnownMarketplaces` + `enabledPlugins`; it takes a `marketplaceSource` so
+generated projects get the GitHub source while this repo dogfoods via a local
+`directory` source. The agent-smoke harness now enables the plugin from the
+working tree (local marketplace) to keep the live check honest.
+
+**Consequences** — Two gotchas worth remembering. (1) `extraKnownMarketplaces[].source`
+**must be an object** with a `source` discriminator (`github`/`directory`/…) —
+the settings schema _rejects a bare path string_ (the guide doc was wrong; the
+validator caught it). The local dogfood source is `{ source: "directory", path: "." }`.
+(2) Plugin components live at the **plugin root**, never under `.claude-plugin/`
+(only `plugin.json` goes there) — misplacement makes Claude Code silently skip
+them. Accepted trade: generated projects now need the marketplace reachable to
+load reviewers (offline clones won't have `/qc` until they can fetch). Plugin
+agents already carried no `hooks`/`mcpServers`/`permissionMode` frontmatter
+(ignored when plugin-loaded), so the guardrail layer correctly stayed in
+CLI-emitted settings. M7 = marketplace publish/pin (tag versioning) + a starter
+skill + `claude-scaffold doctor`.
+
 ## 2026-06-09 — Subagent invocation: structural proxies in CI, live smoke opt-in
 
 **Context** — Design brief §7.3/§11 wants CI to confirm the reviewer subagent

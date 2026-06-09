@@ -10,7 +10,11 @@ vi.mock('./prompts.js', () => ({
 
 import { run } from './index.js';
 import { gatherInput } from './prompts.js';
-import { VERIFY_SCRIPT_TS, VERIFY_SCRIPT_JS } from './templates/guardrails.js';
+import {
+  VERIFY_SCRIPT_TS,
+  VERIFY_SCRIPT_JS,
+  PLUGIN_ID,
+} from './templates/guardrails.js';
 import { claudeMdExceedsBudget } from './templates/claude-md.js';
 
 const baseConfig = {
@@ -173,8 +177,11 @@ describe('run (orchestrator)', () => {
     expect(await fileExists(join(root, 'index.html'))).toBe(false);
   });
 
-  it('emits the QC subagents and /qc command for every framework', async () => {
-    const agentFiles = [
+  it('enables the QC plugin (not project-local agent files) for every framework', async () => {
+    // M6: the QC subagents + /qc ship as the `claude-guardrails` plugin, not as
+    // committed .claude/ files. Every framework must enable the plugin via
+    // settings.json and must NOT emit the old project-local agent/command files.
+    const mustBeAbsent = [
       '.claude/agents/code-reviewer.md',
       '.claude/agents/spec-reviewer.md',
       '.claude/agents/test-runner.md',
@@ -188,9 +195,17 @@ describe('run (orchestrator)', () => {
       await run();
 
       const root = join(tempDir, config.projectName);
-      for (const file of agentFiles) {
-        expect(await fileExists(join(root, file))).toBe(true);
+      for (const file of mustBeAbsent) {
+        expect(await fileExists(join(root, file))).toBe(false);
       }
+
+      const settings = JSON.parse(
+        await readFile(join(root, '.claude/settings.json'), 'utf-8'),
+      );
+      expect(settings.enabledPlugins[PLUGIN_ID]).toBe(true);
+      expect(settings.extraKnownMarketplaces).toHaveProperty(
+        PLUGIN_ID.split('@')[1],
+      );
     }
   });
 

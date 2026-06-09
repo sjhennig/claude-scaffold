@@ -1,0 +1,14 @@
+{
+  "name": "claude-guardrails",
+  "displayName": "Claude Guardrails",
+  "version": "1.0.0",
+  "description": "Read-only quality-control subagents (code/spec/security review, test-runner) and the /qc checkpoint command — the independent-review guardrail layer for Claude Code projects.",
+  "author": {
+    "name": "s-hennig",
+    "email": "stevenhennig@gmail.com"
+  },
+  "homepage": "https://github.com/sjhennig/claude-scaffold",
+  "repository": "https://github.com/sjhennig/claude-scaffold",
+  "license": "MIT",
+  "keywords": ["claude-code", "code-review", "guardrails", "subagents", "qc"]
+}

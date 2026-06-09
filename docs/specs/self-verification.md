@@ -21,10 +21,11 @@ CI:
 Plus a fourth, **opt-in** layer that needs a live Claude and so can't run in
 keyless CI:
 
-4. **Subagent smoke test** — a generated project's reviewer subagent loads, is
-   invokable by name, and returns a review (design brief §7.3 / §11). Its
-   always-on CI substitute is the structural **loadability proxies** in
-   `agents.test.js` (see below).
+4. **Subagent smoke test** — a generated project loads the `claude-guardrails`
+   plugin and its reviewer subagent is invokable by name and returns a review
+   (design brief §7.3 / §11). Its always-on CI substitute is the structural
+   **loadability + enablement-resolution proxies** in `plugin.test.js` (see
+   below).
 
 It is NOT responsible for what the templates contain (that's `project-files.js`)
 or what the guardrails are (that's [[guardrails]]) — only for proving they work.
@@ -34,14 +35,18 @@ or what the guardrails are (that's [[guardrails]]) — only for proving they wor
 - `scripts/boot-test.mjs` — boot harness (registered for drift). Generates each
   template into a temp dir and runs `npm install && npm run verify`.
 - `scripts/agent-smoke.mjs` — opt-in subagent smoke harness (registered for
-  drift). Invokes the `claude` CLI as the `code-reviewer` subagent against a
-  generated project; SKIPs (exit 0) without a key or the CLI.
+  drift). Generates a project, enables the `claude-guardrails` plugin from this
+  repo's working tree (a local `directory` marketplace source), and invokes the
+  `claude` CLI as the `code-reviewer` subagent; SKIPs (exit 0) without a key or
+  the CLI.
 - `src/templates/guardrails.fires.test.js` — behavioral guardrail-fires tests
   (execute the real hooks, assert exit codes/output).
-- `src/templates/agents.test.js` — structural **loadability proxies** (frontmatter
-  parses, every tool is a real Claude Code tool, agent name matches filename,
-  `/qc` only delegates to agents that ship) — the always-on stand-in for the
-  opt-in runtime smoke test.
+- `plugin.test.js` — structural **loadability proxies** (frontmatter parses,
+  every tool is a real Claude Code tool, agent name matches filename, `/qc` only
+  delegates to agents that ship) **plus enablement-resolution proxies** (the
+  plugin manifest + marketplace are valid, and the `enabledPlugins` id the CLI
+  emits resolves to a real marketplace entry and the manifest's plugin name) —
+  the always-on stand-in for the opt-in runtime smoke test.
 - `src/index.test.js` — generation test: file existence + content invariants.
 - `.github/workflows/ci.yml` — the `test` job (generation + guardrail-fires +
   loadability via `npm test`), the `boot` job (one matrix leg per template), and
@@ -61,7 +66,9 @@ scripts/boot-test.mjs [template...]   // default: all four templates
   // Exposed as `npm run test:boot` — NOT part of `npm test` / `npm run verify`.
 
 scripts/agent-smoke.mjs                // opt-in; needs ANTHROPIC_API_KEY + claude CLI
-  // Generates the `none` template, seeds a tiny git diff, runs `claude -p`
+  // Generates the `none` template, seeds a tiny git diff, writes a minimal
+  // settings.json that enables the claude-guardrails plugin from this repo's
+  // working tree (local `directory` marketplace, no hooks), runs `claude -p`
   // AS the code-reviewer subagent (`--agent code-reviewer --output-format json`)
   // and asserts a non-empty review came back. SKIPs (exit 0) with no key / no CLI.
   // Exposed as `npm run test:agent-smoke` — NOT part of `npm test` / `verify` /
@@ -105,20 +112,24 @@ scripts/agent-smoke.mjs                // opt-in; needs ANTHROPIC_API_KEY + clau
 "Confirm the reviewer subagent loads and is invokable" splits across two layers
 because keyless CI can't run a live model:
 
-- **Always-on (CI):** structural **loadability proxies** in `agents.test.js` —
-  the failure modes that would stop Claude Code from loading or dispatching an
-  agent at all: unparseable frontmatter, a tool name outside the known set (a
-  typo Claude Code silently drops), an agent whose `name` ≠ its filename, or a
-  `/qc` command that delegates to an agent that doesn't ship. Combined with the
-  dogfood byte-match, this is the strongest "it would load" signal available
-  without a key.
+- **Always-on (CI):** structural **loadability + enablement-resolution proxies**
+  in `plugin.test.js` — the failure modes that would stop Claude Code from
+  loading or dispatching an agent at all: unparseable frontmatter, a tool name
+  outside the known set (a typo Claude Code silently drops), an agent whose
+  `name` ≠ its filename, or a `/qc` command that delegates to an agent that
+  doesn't ship. Plus the plugin-specific failure modes: an invalid
+  `plugin.json`/`marketplace.json`, components misplaced under `.claude-plugin/`,
+  or an `enabledPlugins` id the CLI emits that doesn't resolve to a real
+  marketplace entry + manifest name. Together this is the strongest "it would
+  load and be enabled" signal available without a key.
 - **Opt-in (live):** `scripts/agent-smoke.mjs` does the real thing — invokes the
   `code-reviewer` subagent by name via the `claude` CLI and asserts a non-empty
   review comes back (the structured Critical/Warning/Suggestion grouping is
   soft-checked — warned, not asserted — since exact phrasing is model-dependent).
   It runs least-privilege: `--permission-mode dontAsk` + a scoped read-only
   allowlist, so the agent can't run arbitrary Bash (closing an API-key-leak
-  path). Run it before a release or after touching `agents.js`:
+  path). Run it before a release or after touching the plugin agents or the
+  enablement wiring in `guardrails.js`:
   `ANTHROPIC_API_KEY=… npm run test:agent-smoke` (or trigger the `agent-smoke`
   workflow). It SKIPs cleanly where it can't run, so it's never a false red.
 

@@ -1,0 +1,17 @@
+{
+  "name": "claude-scaffold",
+  "owner": {
+    "name": "s-hennig",
+    "email": "stevenhennig@gmail.com"
+  },
+  "description": "The claude-scaffold marketplace: portable Claude Code guardrail plugins, versioned independently of the scaffold CLI.",
+  "plugins": [
+    {
+      "name": "claude-guardrails",
+      "source": "./plugin",
+      "description": "Read-only QC subagents + the /qc checkpoint command (Layer 5: independent review).",
+      "version": "1.0.0",
+      "category": "code-quality"
+    }
+  ]
+}

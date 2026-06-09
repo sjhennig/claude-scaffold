@@ -6,18 +6,23 @@
 //
 // Scope: it smoke-tests ONE representative reviewer (code-reviewer). The other
 // agents (spec-reviewer, security-reviewer, test-runner) are covered by the
-// always-on structural loadability proxies in src/templates/agents.test.js, not
+// always-on structural loadability proxies in plugin.test.js, not
 // by this live run. The structured Critical/Warning/Suggestion grouping is
 // soft-checked (warned, not asserted) because exact phrasing is model-dependent;
 // the load-bearing assertion is "loaded + invokable + returned a non-empty
 // review".
 //
 // It generates the `none` template into a temp dir, seeds a tiny staged git
-// diff, strips the project's .claude/settings.json (so its own Stop gate and
-// SessionStart hooks don't fire mid-run — those are covered by
-// guardrails.fires.test.js, and the agent still auto-discovers from
-// .claude/agents/), then runs the real `claude` CLI non-interactively AS the
-// code-reviewer subagent.
+// diff, then replaces the project's .claude/settings.json with a minimal one
+// that enables the `claude-guardrails` plugin from this repo's working tree (a
+// local `directory` marketplace source) and carries NO hooks — so the live run
+// exercises the plugin load + the agent, not the Stop gate (which would
+// `npm run verify` against an uninstalled project) or the SessionStart
+// preflight (those are covered by guardrails.fires.test.js). It then runs the
+// real `claude` CLI non-interactively AS the code-reviewer subagent. Because
+// M6 ships the reviewers via the plugin (not committed .claude/agents files),
+// this doubles as the one live "the plugin loads and its agent is invokable"
+// check.
 //
 // Least privilege: `--permission-mode dontAsk` auto-denies (never prompts, never
 // hangs in headless) any tool outside a scoped read-only allowlist, so the agent
@@ -30,17 +35,24 @@
 //   ANTHROPIC_API_KEY=... node scripts/agent-smoke.mjs
 //   npm run test:agent-smoke
 // With no key or no `claude` on PATH it SKIPs (exit 0) so it's never a false
-// red where it cannot run. Structural loadability proxies in agents.test.js are
+// red where it cannot run. Structural loadability proxies in plugin.test.js are
 // the always-on CI substitute.
 
 import { mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { join, dirname } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { spawnSync } from 'node:child_process';
 import { generateProject } from '../src/index.js';
+import { MARKETPLACE_NAME, PLUGIN_ID } from '../src/templates/guardrails.js';
 
-// The subagent we invoke by name, and the structured headers its generator
-// (src/templates/agents.js) tells it to group findings under.
+// Absolute path to this repo's root — it holds .claude-plugin/marketplace.json,
+// which the smoke run registers as a local `directory` marketplace so the
+// plugin loads from the working tree (not the unmerged GitHub source).
+const REPO_ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
+
+// The subagent we invoke by name, and the structured headers its definition
+// (plugin/agents/code-reviewer.md) tells it to group findings under.
 const AGENT = 'code-reviewer';
 const STRUCTURE_MARKERS = ['Critical', 'Warning', 'Suggestion'];
 
@@ -77,11 +89,28 @@ let ok = false;
 try {
   await generateProject(config, root);
 
-  // Drop the generated project's hooks so the live run only exercises the agent,
-  // not the Stop gate (which would `npm run verify` against an uninstalled
-  // project) or the SessionStart preflight. The agent files under .claude/agents/
-  // stay, so `--agent code-reviewer` still auto-discovers.
-  await rm(join(root, '.claude', 'settings.json'), { force: true });
+  // Replace the generated settings with a minimal one: enable the plugin from
+  // this repo's working tree (local `directory` source) and carry NO hooks, so
+  // the live run only exercises the plugin load + the agent — not the Stop gate
+  // (which would `npm run verify` against an uninstalled project) or the
+  // SessionStart preflight. `--agent code-reviewer` then resolves from the
+  // plugin instead of a project-local .claude/agents file.
+  await writeFile(
+    join(root, '.claude', 'settings.json'),
+    JSON.stringify(
+      {
+        extraKnownMarketplaces: {
+          [MARKETPLACE_NAME]: {
+            source: { source: 'directory', path: REPO_ROOT },
+          },
+        },
+        enabledPlugins: { [PLUGIN_ID]: true },
+      },
+      null,
+      2,
+    ),
+    'utf-8',
+  );
 
   // Seed a real staged diff for the reviewer to look at: a git repo with one
   // file carrying an obvious correctness bug. Bail loudly if any setup step

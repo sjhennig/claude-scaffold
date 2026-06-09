@@ -1,34 +1,59 @@
 # QC Subagents Spec
 
 <!--
-Living doc — update this whenever src/templates/agents.js changes the emitted
-subagents or the /qc command. Registered in docs/specs/subsystem-map.json so the
-drift hook watches it.
+Living doc — update this whenever the plugin's emitted subagents, the /qc
+command, or the enablement wiring change. Registered in
+docs/specs/subsystem-map.json so the drift hook watches the plugin files +
+manifests.
 -->
 
 ## Purpose
 
-Layer 5 of the guardrail model (independent review): the pure generators for the
-quality-control subagents and the `/qc` checkpoint command every scaffolded
-project receives. Like `guardrails.js`, this is the single source of truth the
-repo dogfoods — `agents.test.js` asserts the committed `.claude/agents/` and
-`.claude/commands/qc.md` match this output.
+Layer 5 of the guardrail model (independent review): the quality-control
+subagents and the `/qc` checkpoint command every scaffolded project receives.
+
+As of M6 these ship as a **versioned Claude Code plugin**, `claude-guardrails`,
+rather than as CLI-emitted `.claude/agents/` files — so the reviewers can be
+fixed and improved independently of the scaffold (design brief §3). The plugin
+markdown is the **source of truth**, edited directly. The CLI emits only the
+_enablement_ (an `extraKnownMarketplaces` + `enabledPlugins` block in
+`.claude/settings.json`, owned by [[guardrails]]). This repo dogfoods the same
+plugin via a local marketplace source — see "Dogfooding" below.
 
 ## Owning files
 
-- `src/templates/agents.js` — all subagent + `/qc` generators (pure: no I/O).
+- `plugin/.claude-plugin/plugin.json` — the plugin manifest (`name`, `version`,
+  `description`, author, …). `name: claude-guardrails`.
+- `.claude-plugin/marketplace.json` (repo root) — the `claude-scaffold`
+  marketplace listing the plugin with `source: ./plugin`.
+- `plugin/agents/{code-reviewer,spec-reviewer,test-runner,security-reviewer}.md`
+  — the four read-only QC subagents.
+- `plugin/commands/qc.md` — the `/qc` checkpoint command.
 
-## Public interface
+The enablement (which marketplace, which plugin id, GitHub source for generated
+projects vs. local source for this repo) lives in
+`src/templates/guardrails.js::generateClaudeSettings` — see [[guardrails]].
+
+## Layout (Claude Code plugin format)
 
 ```
-generateCodeReviewerAgent()     -> string   // .claude/agents/code-reviewer.md
-generateSpecReviewerAgent()     -> string   // .claude/agents/spec-reviewer.md
-generateTestRunnerAgent()       -> string   // .claude/agents/test-runner.md
-generateSecurityReviewerAgent() -> string   // .claude/agents/security-reviewer.md
-generateQcCommand()             -> string   // .claude/commands/qc.md (/qc)
+plugin/
+  .claude-plugin/
+    plugin.json          # manifest — ONLY this goes under .claude-plugin/
+  agents/                # subagents at the plugin ROOT, not under .claude-plugin/
+  commands/              # /qc lives here
+.claude-plugin/
+  marketplace.json       # repo-root marketplace; source: "./plugin"
+```
 
-getAgentFiles() -> Array<[relativePath, content]>
-  // The five tuples above, in the commonFiles shape index.js consumes.
+Enablement the CLI emits (generated projects get the GitHub source; this repo
+uses a local `directory` source):
+
+```json
+"extraKnownMarketplaces": {
+  "claude-scaffold": { "source": { "source": "github", "repo": "sjhennig/claude-scaffold" } }
+},
+"enabledPlugins": { "claude-guardrails@claude-scaffold": true }
 ```
 
 ## Invariants & constraints
@@ -39,10 +64,26 @@ getAgentFiles() -> Array<[relativePath, content]>
   **structured return shape** so the main thread can act on the summary alone.
 - `model: inherit` on every agent; the cost note in `/qc` (and CLAUDE.md) steers
   heavy use to checkpoints, not every turn.
-- **No `hooks`/`mcpServers`/`permissionMode` frontmatter** — ignored for
-  plugin-loaded agents; that behavior lives in `.claude/settings.json`.
-- Single source of truth: changing a generator requires regenerating the repo's
-  committed `.claude/` or the `agents.test.js` dogfood block fails.
+- **No `hooks`/`mcpServers`/`permissionMode` frontmatter** — these are _ignored_
+  for plugin-loaded agents, so that behavior must live in `.claude/settings.json`
+  (the [[guardrails]] layer), never in the plugin.
+- **Components live at the plugin root** (`agents/`, `commands/`), never under
+  `.claude-plugin/` (only `plugin.json` goes there) — a misplacement makes
+  Claude Code silently skip them.
+- **Enablement must resolve:** the `enabledPlugins` id the CLI emits
+  (`claude-guardrails@claude-scaffold`) must split into a marketplace name
+  present in `extraKnownMarketplaces` and a plugin name equal to the marketplace
+  entry's name and the manifest's `name`. `plugin.test.js` asserts this.
+
+## Dogfooding
+
+This repo hosts the plugin, so its committed `.claude/settings.json` enables it
+via a local `directory` marketplace source (`{ source: "directory", path: "." }`)
+— pointing Claude Code at the working-tree `plugin/`, so `/qc` here exercises the
+in-development plugin. Generated projects instead get the default GitHub source.
+The only difference between the two is the marketplace _address_; the plugin
+content is identical. `guardrails.test.js` asserts this repo's settings match
+`generateClaudeSettings({ marketplaceSource: LOCAL_MARKETPLACE_SOURCE })`.
 
 ## Edge cases
 
@@ -53,8 +94,25 @@ getAgentFiles() -> Array<[relativePath, content]>
   it reports the stale spec as a gap (complements the SessionStart drift hook by
   catching drift at review time, before the change lands).
 - **No changes in the diff:** `/qc` reports that and stops.
+- **Marketplace unreachable:** generated projects load reviewers from the
+  marketplace, so an offline/air-gapped clone without the marketplace cached
+  won't have `/qc` until it can fetch the plugin. Accepted trade for
+  update-independence (design brief §3); the repo's own local source sidesteps
+  it for dogfooding.
+
+## Known gaps (tracked for M7)
+
+- **The GitHub marketplace source is unpinned** (`GITHUB_MARKETPLACE_SOURCE` has
+  no `ref`). Generated projects therefore float to the repo's default-branch
+  HEAD: anyone who can push to `main` ships new subagent instructions and tool
+  grants into every downstream project on its next plugin sync. M6 ships it this
+  way on purpose — there is no release tag yet, and pinning to a non-existent tag
+  would break plugin loading. M7 (marketplace publish/pin) must add a `ref`
+  pinned to a tag matching the plugin's `version`, so updates become a deliberate
+  bump rather than an implicit HEAD-follow. Until then, the trust boundary is the
+  scaffold repo's push access.
 
 ## Open decisions
 
-- Whether to ship these as a versioned plugin (project-brief V2 goal 2) rather
-  than committed `.claude/agents/` files.
+- _None outstanding._ (M6 resolved "ship as a plugin vs. committed files" — it
+  ships as the `claude-guardrails` plugin.)
