@@ -83,6 +83,33 @@ jobs:
       - name: Boot ${{ matrix.template }}
         run: npm run test:boot -- ${{ matrix.template }}
 
+  # Pack test (M8): prove the npm artifact, not just the working tree. Packs
+  # the tarball, asserts its contents (runtime files in, colocated tests out),
+  # installs it into a clean prefix, and scaffolds + verifies a `none` project
+  # from the INSTALLED package. Cheap enough to gate every PR; the publish
+  # workflow reuses it as the last gate before `npm publish`.
+  pack:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Pack test
+        run: npm run test:pack
+
   # Opt-in subagent runtime smoke test (design brief §7.3 / §11): proves a
   # generated project loads the claude-guardrails plugin and its code-reviewer
   # subagent is invokable by name and returns a review against a live Claude —
