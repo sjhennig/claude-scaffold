@@ -27,7 +27,8 @@ plugin's (`guardrails-vX.Y.Z`) — see the M7/M8 NOTES decisions.
   as the per-PR `pack` CI job and as the publish workflow's last gate.
 - `.github/workflows/publish.yml` — publishes on `cli-v*` tag push: tag/version
   match guard → `npm run verify` → `npm run test:pack` →
-  `npm publish --provenance --access public`.
+  `npm publish --access public` (provenance attached automatically by
+  Trusted Publishing).
 - `package.json` packaging fields (documented here, not drift-watched — the
   file churns with dependency bumps): `name`, `bin`, `files`
   (`["bin/", "src/", "!src/**/*.test.js"]` — the negation keeps the ten
@@ -58,8 +59,12 @@ CLI versions.
   a tagged side-branch commit can't ship unreviewed code).
 - **The pack test gates every publish** (and every PR): a file missing from
   the `files` allowlist fails CI instead of shipping a broken npx experience.
-- **Publishing requires `id-token: write`** (for `--provenance`) and the
-  `NPM_TOKEN` secret; everything else in the workflow is read-only.
+- **Publishing is tokenless (npm Trusted Publishing).** The package's trusted
+  publisher on npmjs.com is this repo + `publish.yml`; the runner's OIDC
+  identity (`id-token: write`) is the only credential, and provenance is
+  attached automatically. Requires npm ≥ 11.5.1, so the workflow updates npm
+  before publishing (Node 22 bundles 10.x). Changing the workflow's filename
+  breaks publishing until the npmjs.com publisher config is updated to match.
 - **The npm package and the plugin are independent artifacts.** Generated
   projects load the plugin from the GitHub marketplace (`guardrails-v*` pin);
   publishing the CLI changes nothing downstream.
@@ -68,16 +73,17 @@ CLI versions.
 
 - **Tag without a matching version bump** → guard step fails; nothing
   publishes; delete the tag, fix, re-tag.
-- **Missing `NPM_TOKEN`** → publish step fails after verify+pack (nothing
-  partially published; npm publish is atomic per version).
+- **Trusted-publisher mismatch** (renamed workflow file, fork, or unregistered
+  repo) → the registry rejects the OIDC exchange at the publish step, after
+  verify+pack (nothing partially published; npm publish is atomic per
+  version). Fix the publisher config on npmjs.com, not the workflow.
 - **Re-running a failed publish** → push the same tag again after deleting it,
   or re-run the workflow run; npm refuses double-publishing a version, which
   is the correct backstop.
 
 ## Open decisions
 
-- **Migrate auth to npm Trusted Publishing (OIDC)** once the package exists:
-  configure the publisher on npmjs.com for this repo + workflow file, then
-  drop the `NPM_TOKEN` secret and the `NODE_AUTH_TOKEN` env. Trusted
-  Publishing cannot bootstrap a first publish, which is why the token path
-  ships first.
+- _None outstanding._ (The Trusted Publishing migration landed right after
+  the 1.0.0 bootstrap: publisher configured on npmjs.com, token dropped from
+  the workflow. The bootstrap NPM_TOKEN secret and npm token should be
+  deleted; the OIDC path gets its first live proof on the next release.)
