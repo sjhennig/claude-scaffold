@@ -1,16 +1,37 @@
 {
-  "name": "claude-scaffold",
+  "name": "@sjhennig/claude-scaffold",
   "version": "1.0.0",
-  "description": "Generate a fully configured project directory for AI-first development with Claude Code",
+  "description": "Scaffold guardrailed, AI-first projects for Claude Code: devcontainer, five-layer guardrails, QC review plugin, and a starter context network in one command",
   "type": "module",
   "bin": {
     "claude-scaffold": "./bin/claude-scaffold.js"
+  },
+  "files": [
+    "bin/",
+    "src/",
+    "!src/**/*.test.js"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "keywords": [
+    "claude-code",
+    "scaffold",
+    "guardrails",
+    "devcontainer",
+    "ai-first",
+    "project-generator"
+  ],
+  "homepage": "https://github.com/sjhennig/claude-scaffold#readme",
+  "bugs": {
+    "url": "https://github.com/sjhennig/claude-scaffold/issues"
   },
   "scripts": {
     "test": "vitest run",
     "test:watch": "vitest",
     "test:boot": "node scripts/boot-test.mjs",
     "test:agent-smoke": "node scripts/agent-smoke.mjs",
+    "test:pack": "node scripts/pack-test.mjs",
     "lint": "eslint .",
     "lint:fix": "eslint --fix .",
     "format": "prettier --write .",
