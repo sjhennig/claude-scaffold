@@ -55,8 +55,11 @@ const packagesByFramework = {
       start: 'next start',
       test: 'vitest run',
       'test:watch': 'vitest',
-      lint: 'next lint',
-      'lint:fix': 'next lint --fix',
+      // `next lint` is deprecated (removed in Next.js 16); invoke ESLint
+      // directly like the other templates. eslint-config-next still supplies
+      // the Next rules via the FlatCompat layer in eslint.config.mjs.
+      lint: 'eslint .',
+      'lint:fix': 'eslint . --fix',
       typecheck: 'npx tsc --noEmit',
       // Everything lives under src/ (incl. the App Router at src/app); a stray
       // 'app/**' glob matches nothing and makes prettier error out.
@@ -75,9 +78,10 @@ const packagesByFramework = {
       '@testing-library/jest-dom': '^6.0.0',
       '@testing-library/react': '^16.0.0',
       '@testing-library/user-event': '^14.0.0',
-      // Next needs @types/node present for TS projects; without it `next lint`
-      // tries to auto-install it mid-run and fails on a peer conflict. The 20.x
-      // line satisfies the vite/vitest peer range (^20.19 || >=22.12).
+      // Next's TS projects need @types/node for `tsc --noEmit` (next.config.ts
+      // imports `next` types that pull in node types); without it typecheck
+      // fails. The 20.x line satisfies the vite/vitest peer range
+      // (^20.19 || >=22.12).
       '@types/node': '^20.19.0',
       '@types/react': '^19.0.0',
       '@types/react-dom': '^19.0.0',
@@ -621,6 +625,9 @@ const compat = new FlatCompat({
 });
 
 const eslintConfig = [
+  // \`eslint .\` (unlike the old \`next lint\`) does not auto-skip build output,
+  // so ignore it explicitly or the CLI tries to lint compiled \`.next\` files.
+  { ignores: ['.next', 'out', 'dist', 'node_modules'] },
   ...compat.extends('next/core-web-vitals', 'next/typescript'),
 ];
 

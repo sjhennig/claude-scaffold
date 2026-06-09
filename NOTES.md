@@ -21,6 +21,26 @@ entries short and high-signal. Newest at the top.
 
 ---
 
+## 2026-06-09 — nextjs-ts lints via the ESLint CLI, not `next lint`
+
+**Context** — `next lint` is deprecated and removed in Next.js 16; the
+`nextjs-ts` template's `lint`/`lint:fix` scripts called it, so a generated
+project on Next 16 would fail `npm run verify` (and its dogfooded Stop gate).
+Flagged as an M4 open decision in `docs/specs/self-verification.md`.
+
+**Decision** — Switch the scripts to `eslint .` / `eslint . --fix`, matching the
+other templates. Keep `eslint-config-next` and the `@eslint/eslintrc`
+`FlatCompat` layer (it still supplies `next/core-web-vitals` + `next/typescript`
+rules) — only the invocation changed. Added an explicit
+`{ ignores: ['.next', 'out', 'dist', 'node_modules'] }` because the bare
+`eslint .` CLI, unlike `next lint`, doesn't auto-skip build output.
+
+**Consequences** — `nextjs-ts` no longer depends on the deprecated command and
+is one Next.js major safer. Verified by `npm run test:boot -- nextjs-ts` (npm
+install, format:check, `eslint .`, `tsc --noEmit`, and vitest all green). The
+`@types/node` dep stays, now justified by `tsc --noEmit` rather than `next
+lint`'s old auto-install behavior.
+
 ## 2026-06-08 — QC-subagent memory is gitignored, not committed
 
 **Context** — The dogfooded `code-reviewer` subagent has `memory: project`
