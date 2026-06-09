@@ -1,0 +1,76 @@
+# Publish the CLI to npm when a cli-vX.Y.Z tag is pushed (M8). The release
+# ritual lives in docs/specs/distribution.md: bump package.json version →
+# merge → push the matching tag. Two guards run before anything else: the tag
+# must match package.json's version, and the tagged commit must be on main —
+# so neither a mistyped tag nor a tagged side-branch commit can publish.
+#
+# Auth: NPM_TOKEN repo secret (an npm "automation" token for the
+# @sjhennig/claude-scaffold package). npm Trusted Publishing (OIDC, no
+# long-lived secret) can only be configured on an EXISTING package, so the
+# token path bootstraps the first publish; migrating to Trusted Publishing
+# afterwards is tracked in the distribution spec's open decisions.
+name: Publish CLI
+
+on:
+  push:
+    tags: ['cli-v*']
+
+permissions:
+  contents: read
+  # npm --provenance attests the build via the runner's OIDC identity.
+  id-token: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+          # Full history so the guard can check main ancestry.
+          fetch-depth: 0
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: 'npm'
+          registry-url: 'https://registry.npmjs.org'
+
+      # Guards run BEFORE npm ci so a bad tag never executes third-party
+      # install lifecycle scripts. (1) The tag IS the version claim, so it
+      # must match package.json exactly — same three-way-agreement spirit as
+      # the plugin's release tests. (2) The tagged commit must be reachable
+      # from main, so a tagged side-branch commit (bumped version, no review)
+      # cannot publish.
+      - name: Guard — tag matches package.json version and is on main
+        run: |
+          TAG_VERSION="${GITHUB_REF_NAME#cli-v}"
+          PKG_VERSION="$(node -p "require('./package.json').version")"
+          if [ "$TAG_VERSION" != "$PKG_VERSION" ]; then
+            echo "Tag cli-v$TAG_VERSION does not match package.json version $PKG_VERSION" >&2
+            exit 1
+          fi
+          if ! git merge-base --is-ancestor "$GITHUB_SHA" origin/main; then
+            echo "Tagged commit $GITHUB_SHA is not on main — refusing to publish unreviewed code" >&2
+            exit 1
+          fi
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Verify
+        run: npm run verify
+
+      # Last gate: prove the artifact, not the working tree (tarball contents,
+      # installed bin executes, generated project verifies).
+      - name: Pack test
+        run: npm run test:pack
+
+      - name: Publish to npm
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: npm publish --provenance --access public

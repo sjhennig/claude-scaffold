@@ -28,6 +28,11 @@
       "name": "doctor",
       "files": ["src/doctor.js", "bin/claude-scaffold.js"],
       "spec": "docs/specs/doctor.md"
+    },
+    {
+      "name": "distribution",
+      "files": [".github/workflows/publish.yml"],
+      "spec": "docs/specs/distribution.md"
     }
   ]
 }
