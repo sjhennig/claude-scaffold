@@ -177,6 +177,86 @@ describe('getAgentFiles', () => {
   });
 });
 
+// Loadability proxies (self-verification spec): the closest we can get in
+// keyless CI to "the subagent loads and is invokable" (design brief §7.3)
+// without a live Claude. A typo'd tool, an unparseable frontmatter block, a
+// name that doesn't match the filename, or a /qc that delegates to a
+// non-existent agent would all make Claude Code fail to load or dispatch the
+// agent at runtime — these assert none of that ships. True runtime invocation
+// is covered by the opt-in scripts/agent-smoke.mjs harness.
+describe('loadability: agents are well-formed enough to load', () => {
+  // Every tool Claude Code currently exposes to a subagent. A tool name outside
+  // this set is a typo (e.g. `Bashh`) — Claude Code silently drops it, leaving
+  // the agent unable to do its job. Hand-maintained: when Claude Code ships a new
+  // tool and an agent in agents.js adopts it, add it here or this test goes red.
+  const KNOWN_TOOLS = [
+    'Read',
+    'Grep',
+    'Glob',
+    'Bash',
+    'Write',
+    'Edit',
+    'MultiEdit',
+    'WebFetch',
+    'WebSearch',
+    'NotebookEdit',
+    'Task',
+    'TodoWrite',
+  ];
+
+  // Map basename -> generator for the four agent files (excludes the /qc command).
+  const agentFiles = getAgentFiles().filter(([p]) =>
+    p.startsWith('.claude/agents/'),
+  );
+
+  for (const [name, generate] of Object.entries(ALL_AGENTS)) {
+    describe(name, () => {
+      const md = generate();
+      const fm = frontmatter(md);
+
+      it('has a non-empty name and description', () => {
+        const nameLine = fm.split('\n').find((l) => l.startsWith('name:'));
+        const descLine = fm
+          .split('\n')
+          .find((l) => l.startsWith('description:'));
+        expect(nameLine?.replace('name:', '').trim()).toBeTruthy();
+        expect(descLine?.replace('description:', '').trim()).toBeTruthy();
+      });
+
+      it('lists only tools Claude Code recognizes', () => {
+        for (const t of tools(md)) {
+          expect(KNOWN_TOOLS).toContain(t);
+        }
+      });
+    });
+  }
+
+  it('each agent file name matches its frontmatter name', () => {
+    for (const [path, content] of agentFiles) {
+      const base = path.split('/').pop().replace('.md', '');
+      expect(frontmatter(content)).toContain(`name: ${base}`);
+    }
+  });
+
+  it('/qc only delegates to agents that actually ship', () => {
+    const shipped = new Set(
+      agentFiles.map(([path]) => path.split('/').pop().replace('.md', '')),
+    );
+    // Agent names in the command are written in bold, e.g. **code-reviewer**.
+    // Restrict to tokens matching the agent naming convention (`*-reviewer` /
+    // `*-runner`) so incidental bold prose (**important**) isn't mistaken for a
+    // delegation — while still catching a /qc that names an agent that doesn't
+    // ship (a rename that orphaned the command).
+    const referenced = [
+      ...generateQcCommand().matchAll(/\*\*([a-z]+-(?:reviewer|runner))\*\*/g),
+    ].map((m) => m[1]);
+    expect(referenced.length).toBeGreaterThan(0);
+    for (const ref of referenced) {
+      expect(shipped).toContain(ref);
+    }
+  });
+});
+
 // If these fail, the committed .claude/ has drifted from the generator —
 // regenerate it from the generators in src/templates/agents.js.
 describe('dogfood: committed .claude/ matches generated output', () => {

@@ -22,10 +22,10 @@ import {
 // covers). We run the real bash hooks against throwaway temp dirs, exactly like
 // the check-drift.sh behavioral suite. bash + npm + jq only, so skip on Windows.
 //
-// Subagent loading / structured-shape / read-only tools are already verified in
-// agents.test.js (frontmatter parse + dogfood byte-match). True *runtime*
-// invocation of a subagent needs a live Claude and is out of CI scope, so it is
-// intentionally not faked here.
+// Subagent loading / structured-shape / read-only tools are verified in
+// agents.test.js (frontmatter parse, loadability proxies, dogfood byte-match).
+// True *runtime* invocation needs a live Claude, so it is not faked here — it
+// lives in the opt-in scripts/agent-smoke.mjs harness (see [[self-verification]]).
 
 // Run a command, capturing exit code + both streams whether it succeeds or not.
 // (spawnSync — not execFileSync — so stderr is captured even on a zero exit, e.g.

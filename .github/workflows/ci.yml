@@ -5,6 +5,9 @@ on:
     branches: [main]
   pull_request:
     branches: [main]
+  # The agent-smoke job spends tokens against a live Claude, so it never runs on
+  # push/PR — a maintainer triggers it by hand from the Actions tab.
+  workflow_dispatch:
 
 # Least privilege: these jobs only read the repo. The boot job in particular
 # runs third-party npm install lifecycle scripts, so it should carry no
@@ -79,3 +82,40 @@ jobs:
 
       - name: Boot ${{ matrix.template }}
         run: npm run test:boot -- ${{ matrix.template }}
+
+  # Opt-in subagent runtime smoke test (design brief §7.3 / §11): proves a
+  # generated project's code-reviewer subagent loads, is invokable by name, and
+  # returns a review against a live Claude — the one self-verification layer that
+  # needs an API key and so can't run on every PR. Manual-only (workflow_dispatch).
+  # Without the ANTHROPIC_API_KEY secret the script SKIPs cleanly (exit 0), so a
+  # fork without the secret won't fail. Normal CI relies on the always-on
+  # structural loadability proxies in agents.test.js instead.
+  agent-smoke:
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+        # This job installs a third-party CLI globally and runs an LLM agent;
+        # don't leave a repo-write token in .git/config for it to find.
+        with:
+          persist-credentials: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Claude Code CLI
+        run: npm install -g @anthropic-ai/claude-code
+
+      - name: Subagent smoke test
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: npm run test:agent-smoke

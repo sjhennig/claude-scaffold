@@ -30,7 +30,8 @@ Builders who use Claude Code as their primary development interface and want max
 - **M2** ✅: Plugin with subagents (code-reviewer, spec-reviewer, test-runner, security-reviewer)
 - **M3** ✅: Context network (docs templates, drift detection, NOTES.md convention)
 - **M4** ✅: Self-verification suite in CI (generation content + boot-all-four + guardrail-fires; see `docs/specs/self-verification.md`)
-- **M5** ⬅️ next: Framework templates (Node+TS first, then React+Vite, Next.js)
+- **M5** ✅: Closed the self-verification open decisions — migrated `nextjs-ts` off deprecated `next lint`, and split subagent-invocation coverage into always-on loadability proxies + an opt-in live smoke harness. (The four framework templates themselves shipped earlier and already boot in CI.)
+- **M6** ⬅️ next: Versioned plugin (V2 goal #2) — carry the subagents/skills/commands as a plugin updateable independently of the scaffold
 
 ## Out of Scope
 

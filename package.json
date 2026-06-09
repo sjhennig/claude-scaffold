@@ -10,6 +10,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:boot": "node scripts/boot-test.mjs",
+    "test:agent-smoke": "node scripts/agent-smoke.mjs",
     "lint": "eslint .",
     "lint:fix": "eslint --fix .",
     "format": "prettier --write .",
