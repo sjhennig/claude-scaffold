@@ -20,8 +20,11 @@ offline can prove the pinned release tag exists on origin; doctor can).
   (facts in, finding out); I/O lives in `gatherHookStates`/`runDoctor` with an
   injectable, shell-free `exec`. The bin layer consumes `runDoctor` (findings
   array) and `formatReport` (findings → printable report).
-- `bin/claude-scaffold.js` — subcommand dispatch (`doctor`, unknown-command
-  usage, default scaffold run).
+- `bin/claude-scaffold.js` — dispatch via `src/cli-args.js::parseCliArgs`
+  (M8): `doctor` as the sole positional (extra args are an error), `--help`,
+  flag/validation errors → USAGE + exit 1, otherwise the scaffold run
+  (interactive or flag-driven). A bare positional is a project name, not a
+  subcommand.
 
 ## Checks (name → fail / warn meaning)
 

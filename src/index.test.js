@@ -55,6 +55,20 @@ describe('run (orchestrator)', () => {
     await rm(tempDir, { recursive: true, force: true });
   });
 
+  // M8 non-interactive mode: the bin's parsed flags must reach gatherInput
+  // verbatim so the flag and prompt paths produce identical configs.
+  it('passes CLI-provided answers and yes-mode through to gatherInput', async () => {
+    const config = withConfig({ framework: 'none' });
+    gatherInput.mockResolvedValue(config);
+    const provided = { projectName: config.projectName, framework: 'none' };
+    await run({ provided, yes: true });
+
+    expect(gatherInput).toHaveBeenCalledWith(provided, { yes: true });
+    // The run completed end-to-end with the flag-shaped input (access throws
+    // if the file was not generated).
+    await access(join(tempDir, config.projectName, 'CLAUDE.md'));
+  });
+
   it('creates all expected files for react-vite-ts', async () => {
     const config = withConfig({ framework: 'react-vite-ts' });
     gatherInput.mockResolvedValue(config);

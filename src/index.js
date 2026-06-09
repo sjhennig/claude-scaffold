@@ -148,10 +148,10 @@ export async function generateProject(config, root) {
 // Main — interactive CLI entry point
 // ---------------------------------------------------------------------------
 
-export async function run() {
+export async function run({ provided = {}, yes = false } = {}) {
   console.log('\n🏗️  claude-scaffold — Generate a Claude Code project\n');
 
-  const config = await gatherInput();
+  const config = await gatherInput(provided, { yes });
   const root = join(process.cwd(), config.projectName);
 
   console.log(`\nCreating project at ./${config.projectName} ...\n`);
