@@ -23,7 +23,9 @@ plugin's (`guardrails-vX.Y.Z`) — see the M7/M8 NOTES decisions.
   in, colocated tests out), installs the tarball into a clean prefix, proves
   the installed bin executes, and scaffolds + verifies a `none` project from
   the installed package. Runs as the per-PR `pack` CI job and as the publish
-  workflow's last gate.
+  workflow's last gate. (Lands with the packaging PR; register it in the
+  subsystem map once both it and this spec are on main — the map's dogfood
+  test requires mapped files to exist on disk.)
 - `.github/workflows/publish.yml` — publishes on `cli-v*` tag push: tag/version
   match guard → `npm run verify` → `npm run test:pack` →
   `npm publish --provenance --access public`.
