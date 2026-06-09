@@ -41,7 +41,7 @@ export const PLUGIN_ID = `${PLUGIN_NAME}@${MARKETPLACE_NAME}`;
 // plugin.test.js enforces that, so bumping the plugin version forces this pin
 // (and a matching git tag) in the same change. Release ritual:
 // docs/specs/qc-agents.md § Releasing.
-export const PINNED_PLUGIN_REF = 'guardrails-v1.0.0';
+export const PINNED_PLUGIN_REF = 'guardrails-v1.1.0';
 
 // Default marketplace source for *generated* projects: the public GitHub repo
 // that hosts this scaffold (and its in-repo plugin), pinned to the last

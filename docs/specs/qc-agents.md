@@ -60,7 +60,7 @@ uses a local `directory` source):
     "source": {
       "source": "github",
       "repo": "sjhennig/claude-scaffold",
-      "ref": "guardrails-v1.0.0"
+      "ref": "guardrails-v1.1.0"
     }
   }
 },
