@@ -264,14 +264,17 @@ describe('gatherHookStates + runDoctor against a generated project', () => {
     expect(result.stdout).toContain('settings.json not found');
   });
 
-  it('bin dispatch: unknown command exits 1 with usage', () => {
+  // (A bare positional like `claude-scaffold bogus` is a PROJECT NAME since
+  // the M8 flag mode — the error path for bad input is an unknown flag.)
+  it('bin dispatch: unknown flag exits 1 with usage', () => {
     const result = spawnSync(
       process.execPath,
-      [join(process.cwd(), 'bin', 'claude-scaffold.js'), 'bogus'],
+      [join(process.cwd(), 'bin', 'claude-scaffold.js'), '--bogus'],
       { encoding: 'utf-8' },
     );
     expect(result.status).toBe(1);
-    expect(result.stderr).toContain('Unknown command: bogus');
+    expect(result.stderr).toContain('--bogus');
+    expect(result.stderr).toContain('Usage:');
     expect(result.stderr).toContain('doctor');
   });
 

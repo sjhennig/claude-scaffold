@@ -1,20 +1,23 @@
 #!/usr/bin/env node
 
-const command = process.argv[2];
+import { parseCliArgs, USAGE } from '../src/cli-args.js';
 
-if (command === 'doctor') {
+const parsed = parseCliArgs(process.argv.slice(2));
+
+if (parsed.command === 'doctor') {
   const { runDoctor, formatReport } = await import('../src/doctor.js');
   const findings = runDoctor();
   console.log(formatReport(findings));
   process.exit(findings.some((f) => f.status === 'fail') ? 1 : 0);
-} else if (command !== undefined) {
-  console.error(
-    `Unknown command: ${command}\nUsage: claude-scaffold          scaffold a new project\n       claude-scaffold doctor   check Claude Code + guardrail config health`,
-  );
+} else if (parsed.command === 'help') {
+  console.log(USAGE);
+} else if (parsed.errors.length > 0) {
+  console.error(parsed.errors.map((e) => `Error: ${e}`).join('\n'));
+  console.error(`\n${USAGE}`);
   process.exit(1);
 } else {
   const { run } = await import('../src/index.js');
-  run().catch((err) => {
+  run(parsed).catch((err) => {
     console.error('Error:', err.message);
     process.exit(1);
   });
