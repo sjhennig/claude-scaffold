@@ -26,10 +26,11 @@ src/
     guardrails.js   Framework-agnostic core: settings.json (incl. plugin enablement) + hook scripts
     hooks.js        .claude/commands README (re-exports guardrails settings)
     project-files.js Framework configs/source (incl. 'none' = guardrails only)
-plugin/             The claude-guardrails plugin (QC subagents + /qc) — source of truth, not generated
+plugin/             The claude-guardrails plugin (QC subagents + /qc + skills) — source of truth, not generated
   .claude-plugin/   plugin.json manifest
   agents/           code/spec/security-reviewer, test-runner
   commands/         qc.md
+  skills/           guardrails-help (on-demand guardrail explainer)
 .claude-plugin/     Repo-root marketplace.json listing the plugin (source: ./plugin)
 plugin.test.js      Validates the committed plugin files + manifests + enablement
 .claude/            Claude Code settings + hooks the CLI emits (QC agents are plugin-borne)

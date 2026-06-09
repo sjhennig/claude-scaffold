@@ -29,6 +29,10 @@ plugin via a local marketplace source — see "Dogfooding" below.
 - `plugin/agents/{code-reviewer,spec-reviewer,test-runner,security-reviewer}.md`
   — the four read-only QC subagents.
 - `plugin/commands/qc.md` — the `/qc` checkpoint command.
+- `plugin/skills/guardrails-help/SKILL.md` — starter skill (M7): explains the
+  five guardrail layers, diagnoses hook/sandbox/plugin events, and gives a
+  relax-safely ladder. Loaded on demand via its `description` (leanness budget:
+  nothing preloaded).
 
 The enablement (which marketplace, which plugin id, GitHub source for generated
 projects vs. local source for this repo) lives in
@@ -42,6 +46,7 @@ plugin/
     plugin.json          # manifest — ONLY this goes under .claude-plugin/
   agents/                # subagents at the plugin ROOT, not under .claude-plugin/
   commands/              # /qc lives here
+  skills/                # skills/<name>/SKILL.md — also at the plugin ROOT
 .claude-plugin/
   marketplace.json       # repo-root marketplace; source: "./plugin"
 ```
@@ -73,9 +78,9 @@ uses a local `directory` source):
 - **No `hooks`/`mcpServers`/`permissionMode` frontmatter** — these are _ignored_
   for plugin-loaded agents, so that behavior must live in `.claude/settings.json`
   (the [[guardrails]] layer), never in the plugin.
-- **Components live at the plugin root** (`agents/`, `commands/`), never under
-  `.claude-plugin/` (only `plugin.json` goes there) — a misplacement makes
-  Claude Code silently skip them.
+- **Components live at the plugin root** (`agents/`, `commands/`, `skills/`),
+  never under `.claude-plugin/` (only `plugin.json` goes there) — a
+  misplacement makes Claude Code silently skip them.
 - **Enablement must resolve:** the `enabledPlugins` id the CLI emits
   (`claude-guardrails@claude-scaffold`) must split into a marketplace name
   present in `extraKnownMarketplaces` and a plugin name equal to the marketplace
