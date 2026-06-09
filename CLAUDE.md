@@ -4,13 +4,15 @@ CLI tool that generates guardrailed, AI-first project scaffolding for Claude Cod
 
 ## Commands
 
-| Command                | Purpose                               |
-| ---------------------- | ------------------------------------- |
-| `npm test`             | Run tests (vitest)                    |
-| `npm run lint`         | ESLint                                |
-| `npm run format`       | Prettier (write)                      |
-| `npm run format:check` | Prettier (check only)                 |
-| `npm run verify`       | Full gate: format:check + lint + test |
+| Command                    | Purpose                                            |
+| -------------------------- | -------------------------------------------------- |
+| `npm test`                 | Run tests (vitest)                                 |
+| `npm run lint`             | ESLint                                             |
+| `npm run format`           | Prettier (write)                                   |
+| `npm run format:check`     | Prettier (check only)                              |
+| `npm run verify`           | Full gate: format:check + lint + test              |
+| `npm run test:boot`        | Boot all generated templates (slow; arg = subset)  |
+| `npm run test:agent-smoke` | Live subagent smoke (needs API key; SKIPs without) |
 
 ## Project Structure
 

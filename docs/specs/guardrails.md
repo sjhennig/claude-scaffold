@@ -25,7 +25,7 @@ here, and `guardrails.test.js`'s `dogfood:` block asserts the two match.
 ## Public interface
 
 ```
-VERIFY_SCRIPT_TS : string   // "npm run format:check && lint && typecheck && test"
+VERIFY_SCRIPT_TS : string   // "npm run format:check && npm run lint && npm run typecheck && npm test"
 VERIFY_SCRIPT_JS : string   // same, minus typecheck (no-framework / JS templates)
 
 generateClaudeSettings({ marketplaceSource } = {}) -> string
