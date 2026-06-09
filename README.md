@@ -41,15 +41,16 @@ The scaffolded project is created at `./{project-name}` relative to your current
 
 ## Frameworks
 
-Three framework templates are available:
+Four templates are available:
 
-| Framework                     | Best for                                                             |
-| ----------------------------- | -------------------------------------------------------------------- |
-| **React + Vite + TypeScript** | Client-side apps, dashboards, browser-based tools                    |
-| **Next.js + TypeScript**      | Full-stack web apps, anything needing SSR or API routes              |
-| **Node + TypeScript**         | CLI tools, APIs, backend services, automation, anything without a UI |
+| Framework                     | Best for                                                                               |
+| ----------------------------- | -------------------------------------------------------------------------------------- |
+| **React + Vite + TypeScript** | Client-side apps, dashboards, browser-based tools                                      |
+| **Next.js + TypeScript**      | Full-stack web apps, anything needing SSR or API routes                                |
+| **Node + TypeScript**         | CLI tools, APIs, backend services, automation, anything without a UI                   |
+| **Guardrails only (none)**    | Bring your own stack — devcontainer, guardrails, docs, and a minimal JS verify harness |
 
-Each framework generates the appropriate package.json, tsconfig, starter files, and directory structure. The devcontainer, Claude Code config, context docs, and permissions are shared across all frameworks.
+Each framework generates the appropriate package.json, tsconfig, starter files (including a passing starter test, so the verification gate works on day one), and directory structure. The devcontainer, Claude Code config, context docs, and permissions are shared across all frameworks — the guardrail core is framework-agnostic.
 
 ## What You Get
 
@@ -57,9 +58,14 @@ The exact files vary by framework. Here's the React + Vite + TypeScript structur
 
 ```
 my-project/
-├── .claude/              ← Settings, permissions, and hooks
-│   ├── settings.json
-│   └── commands/         ← Custom slash commands
+├── .claude/              ← Settings, permissions, sandbox, and hooks
+│   ├── settings.json     ← Permissions + sandbox + hook wiring + QC plugin enablement
+│   ├── hooks/            ← Deterministic gates (see "Hooks" below)
+│   │   ├── validate-command.sh
+│   │   ├── verify-gate.sh
+│   │   ├── sandbox-preflight.sh
+│   │   └── check-drift.sh
+│   └── commands/         ← Custom slash commands (starter README)
 ├── .devcontainer/        ← Docker devcontainer (Node 20, Claude Code pre-installed)
 │   ├── Dockerfile
 │   └── devcontainer.json
@@ -83,6 +89,20 @@ my-project/
 └── vitest.config.ts
 ```
 
+## The Five-Layer Guardrail System
+
+The point of the scaffold is **maximum safe autonomy**: every generated project ships with five independent guardrail layers already wired up. Relaxing one doesn't silently weaken the others.
+
+| #   | Layer                  | Where it lives                                       | What it does                                                                                                      |
+| --- | ---------------------- | ---------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------- |
+| 1   | Sandbox + devcontainer | `.claude/settings.json` `sandbox` + `.devcontainer/` | OS-level isolation; secrets (`~/.ssh`, `~/.aws/credentials`, `.env*`) unreadable, network limited to an allowlist |
+| 2   | Verification harness   | `npm run verify`                                     | format check + lint (+ typecheck) + tests — the project's ground truth                                            |
+| 3   | Deterministic hooks    | `.claude/hooks/*.sh`                                 | Block dangerous commands, auto-format, gate turn-end on verify (see below)                                        |
+| 4   | Scoped permissions     | `.claude/settings.json` `permissions`                | Safe commands auto-approved; `sudo` and secrets denied; push prompted                                             |
+| 5   | Independent review     | `claude-guardrails` plugin                           | `/qc` + three read-only reviewers (code/spec/security) and a test-runner, each in a fresh context                 |
+
+Layer 5 ships as a **versioned plugin**, not as project files: settings.json enables `claude-guardrails@claude-scaffold` from this repo's marketplace, **pinned to a tested release tag** (`guardrails-v<version>`). The plugin carries the `code-reviewer`, `spec-reviewer`, `security-reviewer`, and `test-runner` subagents, the `/qc` checkpoint command, and a `guardrails-help` skill that explains and troubleshoots all of this on demand inside the generated project. Reviewer improvements reach your projects by release, never by re-scaffolding.
+
 ## Default Permissions
 
 Every scaffolded project ships with sensible Claude Code permissions in `.claude/settings.json`. The goal is to reduce approval prompts for safe, everyday operations while keeping destructive or external-facing actions gated.
@@ -92,7 +112,7 @@ Every scaffolded project ships with sensible Claude Code permissions in `.claude
 - File operations — Read, Edit, Write, Glob, Grep
 - Local git — status, diff, log, add, commit, branch, checkout, stash
 - Project scripts — `npm run`, `npm test`, `npx`, `node`
-- Read-only shell — cat, head, tail, wc, tree, ls, find, grep, sort
+- Read-only shell — cat, head, tail, wc, tree, ls, echo, find, grep, sort
 - Web access — WebFetch, WebSearch (for looking up docs)
 
 **Denied entirely:**
@@ -115,10 +135,12 @@ You can also adjust permissions on the fly during a session with `/permissions a
 
 ## Hooks
 
-The generated `.claude/settings.json` also includes two hooks:
+The generated `.claude/settings.json` wires four hook events to scripts in `.claude/hooks/`:
 
-- **PostToolUse** — Runs Prettier on any file Claude edits or writes, keeping style consistent without manual formatting.
-- **Stop** — Runs `npm run typecheck` and `npm test` whenever Claude finishes a task, catching regressions immediately.
+- **PreToolUse** (`validate-command.sh`) — Blocks a short, legible denylist of dangerous Bash commands (recursive root deletes, force-push, and similar) before they run, with a reason.
+- **PostToolUse** — Runs Prettier on any file Claude edits or writes, keeping style consistent without manual formatting. Never blocks the edit.
+- **Stop** (`verify-gate.sh`) — Runs `npm run verify` (format check + lint + typecheck where applicable + tests) whenever Claude tries to finish, and **blocks turn-end until it passes**. This is the core verification gate; it releases itself after a capped number of consecutive failures so it can never deadlock a session.
+- **SessionStart** (`sandbox-preflight.sh`, `check-drift.sh`) — Advisory only: warns honestly when the sandbox is enabled but inert on this machine (common on Docker Desktop), and warns when source changed without its spec once you opt subsystems into the drift map. Both stay silent when there is nothing to report; the drift check is fully dormant until you add subsystems to the map.
 
 ## After Scaffolding
 
@@ -141,7 +163,8 @@ The scaffolded project isn't just files — it's a methodology. Here's the inten
 1. **Fill in `docs/project-brief.md` first.** This anchors everything. Claude reads it to understand what it's building, who it's for, and what's in scope.
 2. **Write a spec before implementing a feature.** Start a Claude Code session, describe the feature, and ask Claude to "ask me hard questions about this feature, then write the spec." Save it in `docs/specs/`.
 3. **Implement each spec in a fresh Claude Code session.** Fresh sessions have clean context, which produces better results than continuing a long conversation where context has accumulated.
-4. **Let TDD and hooks enforce quality.** The CLAUDE.md instructions tell Claude to write failing tests first, and the Stop hook runs typecheck + tests automatically when Claude finishes — regressions are caught immediately.
+4. **Let TDD and hooks enforce quality.** The CLAUDE.md instructions tell Claude to write failing tests first, and the Stop hook runs the full `npm run verify` gate (format check, lint, typecheck, tests) automatically when Claude finishes — regressions are caught immediately.
+5. **Review at checkpoints with `/qc`.** Before a commit or at the end of a feature, run `/qc` to have the plugin's read-only reviewers check the diff in fresh contexts — correctness, spec conformance, and security.
 
 CLAUDE.md is intentionally kept under 100 lines. It's a quick-reference card, not a manual. If Claude keeps getting something wrong, add a one-line instruction there. If it needs detailed context, put it in `docs/` and add a pointer from CLAUDE.md. This progressive disclosure keeps Claude's context window focused on what matters for the current task.
 
