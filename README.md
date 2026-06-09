@@ -12,18 +12,30 @@ Starting a new Claude Code project means manually wiring up a Docker devcontaine
 
 ## Quick Start
 
-```bash
-# Clone and install
-git clone https://github.com/sjhennig/claude-scaffold.git
-cd claude-scaffold
-npm install
-npm link
+No install needed — just Node 20+:
 
-# Scaffold a new project
-claude-scaffold
+```bash
+# One line, no prompts (defaults for everything unspecified):
+npx @sjhennig/claude-scaffold my-app --framework node-ts --yes
+
+# Or interactive — answer seven questions:
+npx @sjhennig/claude-scaffold
 ```
 
-You'll be prompted for:
+> **Naming note:** the package is scoped (`@sjhennig/claude-scaffold`) because
+> the unscoped npm name `claude-scaffold` belongs to an unrelated tool. The
+> installed command is still `claude-scaffold`.
+
+Every prompt has a flag — any subset works, and whatever you don't pass is
+asked interactively (or defaulted by `--yes`):
+
+```
+claude-scaffold <name> [--description <text>] [--framework <id>] [--port <n>]
+                [--anthropic-api] [--api-keys <a,b>] [--no-git] [--yes]
+claude-scaffold doctor   # guardrail health check in a scaffolded project
+```
+
+In interactive mode, you'll be prompted for:
 
 | Prompt                       | Default                                  |
 | ---------------------------- | ---------------------------------------- |
@@ -36,8 +48,6 @@ You'll be prompted for:
 | Initialize git?              | Yes                                      |
 
 The scaffolded project is created at `./{project-name}` relative to your current directory.
-
-> **Note:** `npm link` creates a symlink so you can run `claude-scaffold` from anywhere. If it fails with a permissions error, try `sudo npm link`. Alternatively, skip linking and run the tool directly with `node bin/claude-scaffold.js`.
 
 ## Frameworks
 
@@ -150,7 +160,7 @@ The generated `.claude/settings.json` wires four hook events to scripts in `.cla
 4. Fill in `docs/project-brief.md` with your project details
 5. Start building with Claude Code
 
-At any point, run `claude-scaffold doctor` from the project root to check
+At any point, run `npx @sjhennig/claude-scaffold doctor` from the project root to check
 guardrail health: Claude Code installed, settings valid, hook scripts
 executable, the QC plugin's enablement and pinned release tag resolvable, and
 whether the sandbox is actually active (it reports honestly when it's dormant,
@@ -190,9 +200,14 @@ The tool is structured so new frameworks can be added without changing the orche
 
 ## Development
 
+Working on the scaffold itself (users should `npx` instead — see Quick Start):
+
 ```bash
-# Run the tool locally
-node bin/claude-scaffold.js
+# Clone and link the command globally
+git clone https://github.com/sjhennig/claude-scaffold.git
+cd claude-scaffold
+npm install
+npm link        # or run directly: node bin/claude-scaffold.js
 
 # Run tests
 npm test
@@ -200,9 +215,19 @@ npm test
 # Watch mode
 npm run test:watch
 
+# Full gate (format check + lint + tests)
+npm run verify
+
+# Prove the npm artifact works (pack → install → scaffold → verify)
+npm run test:pack
+
 # Format
 npx prettier --write .
 ```
+
+Releases: bump `package.json`, merge, then push a matching `cli-vX.Y.Z` tag —
+the publish workflow verifies, pack-tests, and publishes to npm with
+provenance. See `docs/specs/distribution.md`.
 
 This tool follows its own TDD methodology — the same testing discipline it generates for scaffolded projects.
 

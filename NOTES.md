@@ -21,6 +21,31 @@ entries short and high-signal. Newest at the top.
 
 ---
 
+## 2026-06-09 — M8 shipped: npx kickoff, flag mode, tag-fired publishing
+
+**Context** — Executing the M8 plan (entry below). Three implementation PRs
+(#32 packaging + pack test, #33 flag mode, #34 publish pipeline) plus the docs
+wrap. Everything in the plan held; two things were learned the hard way.
+
+**Decision/outcome** — (1) The pack test drives the **installed bin with the
+flag mode** — the literal npx-user path — not the library API; it gates every
+PR and every publish. (2) The publish workflow gained a second guard beyond
+tag=version: the tagged commit must be an **ancestor of main** (QC: otherwise
+any write-access tag publishes unreviewed code with provenance), and both
+guards run before `npm ci` so a bad tag never executes third-party install
+scripts. (3) Flag/prompt parity is enforced by sharing the literal validator
+functions, plus an exit-cleanup for the one config flags could produce that
+prompts can't (`--port` surviving an interactively-chosen `none`).
+
+**Consequences** — Kickoff is `npx @sjhennig/claude-scaffold <name> …`; clone
+and `npm link` is the contributor path only. CLI releases: bump → merge → push
+`cli-v<version>`. Process lessons, both now load-bearing: (a) **mapped files
+must exist on the same branch** — the subsystem-map dogfood test fails a
+branch that maps a file landing in a sibling PR (split the map entry across
+the PRs); (b) **never judge a gate through a pipe** — `npm run verify | tail`
+returns tail's exit code, which masked a real failure until the repo's own
+Stop gate caught it. Check `$?` of the unpiped command.
+
 ## 2026-06-09 — M8 planned: CLI ships as a scoped npm package
 
 **Context** — Kickoff currently requires clone + `npm install` + `npm link` —

@@ -11,11 +11,10 @@
 //
 // Usage: node scripts/pack-test.mjs   (exposed as `npm run test:pack`)
 
-import { mkdtemp, rm, readFile } from 'node:fs/promises';
+import { mkdtemp, rm } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { pathToFileURL } from 'node:url';
 import { spawnSync } from 'node:child_process';
 
 const repoRoot = process.cwd();
@@ -38,9 +37,6 @@ function run(cmd, args, { cwd = repoRoot, allowFail = false } = {}) {
 const work = await mkdtemp(join(tmpdir(), 'pack-test-'));
 try {
   // 1. Pack the working tree.
-  const packageName = JSON.parse(
-    await readFile(join(repoRoot, 'package.json'), 'utf-8'),
-  ).name;
   const packed = run('npm', ['pack', '--json', '--pack-destination', work]);
   const tarball = join(work, JSON.parse(packed.stdout)[0].filename);
   console.log(`✓ packed ${tarball}`);
@@ -95,26 +91,18 @@ try {
     '✓ installed bin runs (doctor reports correctly in an empty dir)',
   );
 
-  // 5. Generate a project FROM THE INSTALLED PACKAGE and prove it verifies.
-  // (Driven via the API until the non-interactive flag mode lands; then this
-  // step should drive the bin itself.)
-  const { generateProject } = await import(
-    pathToFileURL(join(prefix, 'node_modules', packageName, 'src', 'index.js'))
-      .href
+  // 5. Scaffold a project by DRIVING THE INSTALLED BIN with the M8 flag mode
+  // — the exact path an npx user takes — and prove the result verifies.
+  const scaffold = run(
+    installedBin,
+    ['pack-none', '--framework', 'none', '--no-git', '--yes'],
+    { cwd: work },
   );
+  if (!scaffold.stdout.includes('created')) {
+    console.error(scaffold.stdout, scaffold.stderr);
+    fail('installed bin did not report the project as created');
+  }
   const projectRoot = join(work, 'pack-none');
-  await generateProject(
-    {
-      projectName: 'pack-none',
-      description: 'Pack-test generated project',
-      framework: 'none',
-      devPort: 3000,
-      useAnthropicApi: false,
-      additionalKeys: [],
-      initGit: false,
-    },
-    projectRoot,
-  );
   const install = spawnSync('npm', ['install', '--no-audit', '--no-fund'], {
     cwd: projectRoot,
     stdio: 'inherit',
@@ -125,7 +113,7 @@ try {
     stdio: 'inherit',
   });
   if (verify.status !== 0) fail('generated project failed npm run verify');
-  console.log('✓ project generated from the installed package verifies');
+  console.log('✓ project scaffolded via the installed bin (flags) verifies');
 
   console.log('\nPack test passed: the published artifact is self-contained.');
 } finally {

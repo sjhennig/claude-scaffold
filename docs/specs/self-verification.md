@@ -51,8 +51,8 @@ or what the guardrails are (that's [[guardrails]]) — only for proving they wor
 - `.github/workflows/ci.yml` — the `test` job (generation + guardrail-fires +
   loadability via `npm test`), the `boot` job (one matrix leg per template),
   the `pack` job (M8: `npm run test:pack` proves the npm tarball is
-  self-contained — its spec lands with the publish pipeline, M8 PR 3), and the
-  opt-in `agent-smoke` job (`workflow_dispatch` only).
+  self-contained — owned by [[distribution]]), and the opt-in `agent-smoke`
+  job (`workflow_dispatch` only).
 
 It depends on the `generateProject(config, root)` contract in `src/index.js`
 (the prompt-free generation entry point the harness drives).
