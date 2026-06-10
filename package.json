@@ -1,6 +1,6 @@
 {
   "name": "@sjhennig/claude-scaffold",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Scaffold guardrailed, AI-first projects for Claude Code: devcontainer, five-layer guardrails, QC review plugin, and a starter context network in one command",
   "type": "module",
   "bin": {
