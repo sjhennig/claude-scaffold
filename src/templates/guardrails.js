@@ -107,8 +107,21 @@ export function generateClaudeSettings({
         // Belt-and-suspenders with the sandbox denyRead below: these stop
         // Claude's file tools (Read) from touching secrets; the sandbox stops
         // Bash subprocesses.
+        //
+        // Enumerated, not globbed: Claude Code silently ignores glob patterns
+        // in Read/Edit permission rules on Linux, so a single 'Read(./.env.*)'
+        // would be a no-op there and leave .env.local/.env.production exposed.
+        // We list the framework env-file variants explicitly instead. (The
+        // sandbox denyRead below keeps its '.env.*' glob — that layer uses
+        // gitignore-style matching where '*' works.)
         'Read(./.env)',
-        'Read(./.env.*)',
+        'Read(./.env.local)',
+        'Read(./.env.development)',
+        'Read(./.env.development.local)',
+        'Read(./.env.production)',
+        'Read(./.env.production.local)',
+        'Read(./.env.test)',
+        'Read(./.env.test.local)',
         'Read(~/.ssh/**)',
         'Read(~/.aws/credentials)',
       ],
