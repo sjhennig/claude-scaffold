@@ -44,6 +44,21 @@ describe('generateClaudeSettings', () => {
     expect(settings.permissions.deny).toContain('Read(~/.ssh/**)');
   });
 
+  it('enumerates .env.* variants in Read deny (Linux ignores glob rules)', () => {
+    // A single 'Read(./.env.*)' is a no-op on Linux, so the common framework
+    // env files must be listed explicitly or they leak.
+    for (const variant of [
+      'Read(./.env.local)',
+      'Read(./.env.development)',
+      'Read(./.env.production)',
+      'Read(./.env.test)',
+    ]) {
+      expect(settings.permissions.deny).toContain(variant);
+    }
+    // And no glob form survives in the Read deny list.
+    expect(settings.permissions.deny).not.toContain('Read(./.env.*)');
+  });
+
   it('nests allowUnixSockets under sandbox.network (valid schema)', () => {
     expect(settings.sandbox.network).toHaveProperty('allowUnixSockets');
     expect(settings.sandbox).not.toHaveProperty('allowUnixSockets');
