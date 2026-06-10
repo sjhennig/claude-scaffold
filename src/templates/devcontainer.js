@@ -24,8 +24,15 @@ RUN apt-get update && apt-get install -y \\
     socat \\
     && rm -rf /var/lib/apt/lists/*
 
-# Let the node user run privileged commands when needed
-RUN echo "node ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers
+# Passwordless sudo for the human developer (e.g. ad-hoc apt-get installs while
+# iterating in the container). Claude itself cannot escalate: \`Bash(sudo:*)\` is
+# in the permissions deny-list in .claude/settings.json, so the agent is blocked
+# from sudo regardless. Residual risk: dependency code — an \`npm install\`
+# postinstall script (run by postCreateCommand) executes as the node user and
+# can use this grant to reach root *inside the container*. The container is not a
+# boundary against malicious deps; pin/vet dependencies and rely on CI's
+# dependency review. Remove this line if you don't need dev sudo.
+RUN echo "node ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers.d/node
 
 # Pre-install Claude Code so it's available immediately on container start
 RUN npm install -g @anthropic-ai/claude-code
@@ -62,7 +69,11 @@ export function generateDevcontainerJson(config) {
       },
     },
     mounts: [
-      // Share host Claude auth so you don't have to re-authenticate inside the container
+      // Share host Claude auth so you don't have to re-authenticate inside the
+      // container. NOTE: this exposes your host ~/.claude credentials (read-write)
+      // to anything running in the container, including dependency install
+      // scripts. Drop this mount and authenticate inside the container if you'd
+      // rather not share host credentials.
       'source=${localEnv:HOME}/.claude,target=/home/node/.claude,type=bind',
       // Persist bash history across container rebuilds
       'source=claude-scaffold-bashhistory,target=/home/node/.bash_history_dir,type=volume',

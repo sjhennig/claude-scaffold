@@ -12,6 +12,7 @@ import { parseArgs } from 'node:util';
 import {
   FRAMEWORK_VALUES,
   validateProjectName,
+  validateDescription,
   validateDevPort,
   normalizeAdditionalKeys,
 } from './prompts.js';
@@ -92,8 +93,11 @@ export function parseCliArgs(argv) {
     else provided.projectName = positionals[0];
   }
 
-  if (values.description !== undefined)
-    provided.description = values.description;
+  if (values.description !== undefined) {
+    const valid = validateDescription(values.description);
+    if (valid !== true) errors.push(`--description: ${valid}`);
+    else provided.description = values.description;
+  }
 
   if (values.framework !== undefined) {
     if (!FRAMEWORK_VALUES.includes(values.framework)) {

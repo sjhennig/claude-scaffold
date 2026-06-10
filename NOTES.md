@@ -21,6 +21,32 @@ entries short and high-signal. Newest at the top.
 
 ---
 
+## 2026-06-10 — Security audit: dispositions for the five findings
+
+**Context** — Full hands-on security pass before going public. No critical/high
+issues, no committed secrets. Five findings; three resolved with changes
+(description input validation; honest documentation of the devcontainer trust
+model; softened denylist framing), two consciously **accepted** and recorded here
+so they aren't re-litigated.
+
+**Decision** — (4, accepted) The Dockerfile floats its base image tag
+(`node:20-bookworm-slim`) and the global Claude Code version rather than pinning
+by digest/version. For a security tool, auto-picking-up upstream fixes is worth
+more than byte-reproducible builds; CI runs `npm audit` + dependency-review and
+the lockfile is committed. (5, accepted) `verify-gate.sh`'s marker path
+`${TMPDIR:-/tmp}/claude-verify-gate-${SESSION}` is predictable by prefix, but
+`session_id` is an unguessable harness UUID and is always double-quoted (no
+injection), so the theoretical `/tmp` symlink/TOCTOU vector isn't worth `mktemp`
+complexity. The central residual risk — the devcontainer shares host `~/.claude`
+credentials and grants `node` passwordless root, so it's no boundary against a
+malicious dependency — is a deliberate ergonomics tradeoff, now documented in
+`docs/sandbox.md § Trust model & residual risk`.
+
+**Consequences** — Revisit (4) if a reproducible-build requirement appears (pin by
+digest then). Revisit (5) only if marker state ever carries something sensitive.
+The trust-model doc is the canonical place to point users asking "what actually
+isolates Claude here?"
+
 ## 2026-06-09 — M8 shipped: npx kickoff, flag mode, tag-fired publishing
 
 **Context** — Executing the M8 plan (entry below). Three implementation PRs

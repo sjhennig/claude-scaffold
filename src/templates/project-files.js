@@ -831,7 +831,7 @@ This project is set up for AI-first development with Claude Code:
 - **\`CLAUDE.md\`** — Quick-reference card Claude reads every session (commands, workflow, conventions)
 - **\`docs/\`** — Detailed context documents Claude reads as needed
 - **\`docs/specs/\`** — Feature specs written before implementation
-- **\`.claude/settings.json\`** — Sensible default permissions, sandbox, and hooks. Safe operations (file edits, local git, running tests) are auto-approved. Destructive or external-facing actions (rm, git push, npm install) still require manual approval. Hooks auto-format edited files, block dangerous shell commands, and run \`npm run verify\` when Claude finishes a task — **blocking turn-end until it passes**.
+- **\`.claude/settings.json\`** — Sensible default permissions, sandbox, and hooks. Safe operations (file edits, local git, running tests) are auto-approved. Destructive or external-facing actions (rm, git push, npm install) still require manual approval. Hooks auto-format edited files, flag obviously destructive shell commands (a best-effort accident guard, not an adversarial control), and run \`npm run verify\` when Claude finishes a task — **blocking turn-end until it passes**.
 
 ## Running in Auto Mode
 
@@ -845,8 +845,12 @@ every step:
   tries to finish and **keeps it working until that passes** (releasing with a
   warning after a few failed attempts so you're never stuck), so the code Claude
   leaves behind is formatted, lint-clean, and green.
-- **Honest boundaries:** the sandbox and a dangerous-command check block the worst
-  mistakes before they run, and secrets (\`.env\`, SSH keys) are off-limits.
+- **Honest boundaries:** the sandbox and a best-effort dangerous-command check
+  catch common destructive *accidents* (e.g. \`rm -rf /\`) before they run, and
+  secrets (\`.env\`, SSH keys) are off-limits. These are speed-bumps, not a wall
+  against adversarial input — the devcontainer is the real isolation layer, and it
+  shares your host Claude credentials and trusts your dependencies, so pin and vet
+  what you install.
 
 If you ever catch Claude ignoring an instruction, **trim \`CLAUDE.md\`** rather than
 adding more to it — an overstuffed file is the usual cause.

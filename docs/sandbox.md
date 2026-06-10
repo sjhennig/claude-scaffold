@@ -84,6 +84,45 @@ includes a **SessionStart preflight hook**
 This is why you'll see a sandbox warning at the start of a session on Docker
 Desktop. It's expected, and it's telling the truth.
 
+## Trust model & residual risk
+
+Because the inner bwrap sandbox is usually dormant on Docker Desktop (the most
+common setup), the **devcontainer is the effective boundary** for most users.
+It's worth being honest about what that boundary does and does not protect
+against — two deliberate design choices weaken it from the inside:
+
+- **The container bind-mounts your host `~/.claude` credentials (read-write).**
+  This is the auth-sharing convenience that means you don't re-login inside the
+  container — but it also means anything running in the container can read (and
+  overwrite) those credentials.
+- **The `node` user has passwordless sudo.** This is a human-developer
+  convenience (ad-hoc `apt-get` while iterating). Claude itself can't use it —
+  `Bash(sudo:*)` is in the `settings.json` deny-list — but other in-container
+  code can.
+
+The realistic threat that combines these is **a malicious or compromised
+dependency**: `npm install` (run automatically by `postCreateCommand`) executes
+arbitrary `postinstall` scripts as the `node` user, which can then reach root
+inside the container and read the mounted host credentials. The container is
+**not** a boundary against malicious dependencies.
+
+This is an accepted tradeoff — credential sharing and dev sudo are what make the
+high-autonomy workflow ergonomic — but it's mitigated, not ignored:
+
+- The bubblewrap sandbox, **when active** (native Linux with user namespaces),
+  constrains each command's filesystem/network and is genuine defense in depth
+  here — another reason to light it up on Linux.
+- CI runs `actions/dependency-review` on PRs and `npm audit --audit-level=high`,
+  and the lockfile is committed — so dependency changes are reviewable.
+- The usual supply-chain hygiene applies: pin and vet dependencies, and be
+  deliberate about what you add. On a Mac, the LinuxKit VM still backstops the
+  host even if a dependency goes rogue inside the container.
+
+If you don't need host-auth sharing, you can drop the `~/.claude` bind mount in
+`.devcontainer/devcontainer.json` and authenticate inside the container instead;
+if you don't need dev sudo, remove the `sudoers.d/node` line from the
+`Dockerfile`. Both tighten the boundary at a small ergonomic cost.
+
 ## Recommended posture
 
 - **macOS / Docker Desktop:** treat the **VM + devcontainer as your boundary**
