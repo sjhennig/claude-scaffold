@@ -24,6 +24,15 @@ The primary security concerns for this project are:
 - **Generated output:** ensuring scaffolded projects don't contain insecure defaults
 - **Secret leakage:** ensuring no credentials end up in the repository
 
+## Known residual risks
+
+The generated devcontainer is the effective isolation layer on most setups (the
+inner bubblewrap sandbox is dormant on Docker Desktop). It deliberately shares
+your host `~/.claude` credentials and grants the container user passwordless
+sudo, so it is **not** a boundary against a malicious dependency. This is an
+accepted ergonomics tradeoff and the mitigations are documented in
+[`docs/sandbox.md` § Trust model & residual risk](docs/sandbox.md#trust-model--residual-risk).
+
 ## Supported Versions
 
 Only the latest release on the `main` branch is supported with security updates.

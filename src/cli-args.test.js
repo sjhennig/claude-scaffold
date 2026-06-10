@@ -63,6 +63,22 @@ describe('parseCliArgs', () => {
     expect(errors.join(' ')).toContain('kebab-case');
   });
 
+  it('rejects a description with template-literal/markup metacharacters', () => {
+    const { errors } = parseCliArgs(['my-app', '--description', 'hi `whoami`']);
+    expect(errors.join(' ')).toContain('--description');
+    expect(errors.join(' ')).toContain('backticks');
+  });
+
+  it('accepts an ordinary description with apostrophes and parentheses', () => {
+    const { provided, errors } = parseCliArgs([
+      'my-app',
+      '--description',
+      "Steven's app (v2)",
+    ]);
+    expect(errors).toEqual([]);
+    expect(provided.description).toBe("Steven's app (v2)");
+  });
+
   it('rejects an unknown framework and names the valid ones', () => {
     const { errors } = parseCliArgs(['my-app', '--framework', 'rails']);
     expect(errors.join(' ')).toContain('rails');

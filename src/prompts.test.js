@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   validateProjectName,
+  validateDescription,
   validateDevPort,
   normalizeAdditionalKeys,
   defaultAnswers,
@@ -49,6 +50,31 @@ describe('validateProjectName', () => {
     expect(validateProjectName('my-project')).toBe(true);
     expect(validateProjectName('a')).toBe(true);
     expect(validateProjectName('my-cool-app-2')).toBe(true);
+  });
+});
+
+describe('validateDescription', () => {
+  const msg =
+    'Description cannot contain backticks, ${, or angle brackets (they break generated files).';
+
+  it('accepts ordinary prose, apostrophes, and parentheses', () => {
+    expect(validateDescription('A new Claude Code project')).toBe(true);
+    expect(validateDescription("Steven's app (v2)")).toBe(true);
+    expect(validateDescription('Costs $5 per call')).toBe(true);
+  });
+
+  it('treats empty/undefined as valid (the prompt default fills it in)', () => {
+    expect(validateDescription('')).toBe(true);
+    expect(validateDescription(undefined)).toBe(true);
+  });
+
+  it('rejects template-literal breakouts (backtick and ${)', () => {
+    expect(validateDescription('hi `whoami`')).toBe(msg);
+    expect(validateDescription('hi ${process.env.SECRET}')).toBe(msg);
+  });
+
+  it('rejects angle brackets (HTML/markup injection)', () => {
+    expect(validateDescription('</title><script>alert(1)</script>')).toBe(msg);
   });
 });
 

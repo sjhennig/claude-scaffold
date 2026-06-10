@@ -30,6 +30,20 @@ export function validateProjectName(input) {
   return true;
 }
 
+// The description is interpolated verbatim into generated source and HTML
+// (CLAUDE.md, README, .tsx/.ts files, index.html <title>, Next.js metadata), so
+// characters that are special in those contexts would break or inject into the
+// user's own scaffolded output. Reject the few that matter — backtick and `${`
+// (JS template-literal breakouts) and angle brackets (HTML/markup) — while still
+// allowing ordinary prose, apostrophes, and parentheses. Empty is fine: the
+// prompt default fills it in.
+export function validateDescription(input) {
+  if (!input) return true;
+  if (/[`<>]/.test(input) || input.includes('${'))
+    return 'Description cannot contain backticks, ${, or angle brackets (they break generated files).';
+  return true;
+}
+
 export function validateDevPort(input) {
   const port = Number(input);
   if (!Number.isInteger(port) || port < 1 || port > 65535)
@@ -56,6 +70,7 @@ const questions = [
     name: 'description',
     message: 'One-line description:',
     default: DEFAULT_DESCRIPTION,
+    validate: validateDescription,
   },
   {
     type: 'list',

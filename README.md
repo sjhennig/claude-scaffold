@@ -147,24 +147,121 @@ You can also adjust permissions on the fly during a session with `/permissions a
 
 The generated `.claude/settings.json` wires four hook events to scripts in `.claude/hooks/`:
 
-- **PreToolUse** (`validate-command.sh`) — Blocks a short, legible denylist of dangerous Bash commands (recursive root deletes, force-push, and similar) before they run, with a reason.
+- **PreToolUse** (`validate-command.sh`) — Blocks a short, legible denylist of dangerous Bash commands (recursive root deletes, force-push, and similar) before they run, with a reason. It's a best-effort guard against destructive _accidents_, not an adversarial control — denylists are bypassable, so it's a speed-bump, with the sandbox and devcontainer as the real boundaries.
 - **PostToolUse** — Runs Prettier on any file Claude edits or writes, keeping style consistent without manual formatting. Never blocks the edit.
 - **Stop** (`verify-gate.sh`) — Runs `npm run verify` (format check + lint + typecheck where applicable + tests) whenever Claude tries to finish, and **blocks turn-end until it passes**. This is the core verification gate; it releases itself after a capped number of consecutive failures so it can never deadlock a session.
 - **SessionStart** (`sandbox-preflight.sh`, `check-drift.sh`) — Advisory only: warns honestly when the sandbox is enabled but inert on this machine (common on Docker Desktop), and warns when source changed without its spec once you opt subsystems into the drift map. Both stay silent when there is nothing to report; the drift check is fully dormant until you add subsystems to the map.
 
-## After Scaffolding
+## Setting Up a New Project, Step by Step
 
-1. `cd my-project`
-2. Open in VS Code: `code .`
-3. Click **"Reopen in Container"** when prompted
-4. Fill in `docs/project-brief.md` with your project details
-5. Start building with Claude Code
+Everything you need is listed under [Prerequisites](#prerequisites). The short
+version: Node 20+, Docker Desktop, VS Code with the Dev Containers extension,
+and Claude Code authenticated on your host machine.
+
+### 1. Start Docker
+
+Launch Docker Desktop and wait until it reports "running". The devcontainer
+build in step 4 needs the Docker daemon up — if it isn't, VS Code will fail
+with a "Docker not found / not running" error rather than offering to start it.
+
+### 2. Generate the project
+
+From the directory that should contain your new project:
+
+```bash
+# Interactive — answer seven questions:
+npx @sjhennig/claude-scaffold
+
+# Or one line, no prompts:
+npx @sjhennig/claude-scaffold my-app --framework node-ts --yes
+```
+
+This writes the complete project to `./my-app` and (by default) initializes a
+git repository. Nothing is installed yet — dependencies are handled inside the
+container in step 4.
+
+### 3. Open it in VS Code
+
+```bash
+cd my-app
+code .
+```
+
+VS Code detects the `.devcontainer/` folder and shows a toast in the corner:
+**"Reopen in Container"**. Click it. (If you miss the toast: Command Palette →
+**Dev Containers: Reopen in Container**.)
+
+### 4. Let the container build
+
+On first open, VS Code hands the `.devcontainer/Dockerfile` to Docker and
+builds an image — Node 20 plus dev tools (git, ripgrep, jq, GitHub CLI) with
+Claude Code pre-installed. When the container starts, `npm install` runs
+automatically inside it. The first build takes a few minutes; reopening the
+project later reuses the image and takes seconds.
+
+Two things carry over from your host automatically:
+
+- **Claude Code auth** — your host `~/.claude` directory is mounted into the
+  container, so the `claude` command is already logged in. No re-authentication.
+- **Your files** — the project folder itself is mounted, not copied. Everything
+  you or Claude edit in the container is on your host disk; deleting the
+  container loses nothing.
+
+You're now working _inside_ the container: the VS Code terminal, the extensions
+(Claude Code, ESLint, Prettier), and every command Claude runs all execute in
+the isolated environment, not on your host.
+
+### 5. Fill in the project brief
+
+Open `docs/project-brief.md` and describe what you're building, who it's for,
+and what's in scope for v1. Claude reads this first in every session — five
+minutes here pays for itself immediately.
+
+### 6. Start Claude Code
+
+In the VS Code terminal:
+
+```bash
+claude
+```
+
+On Docker Desktop (macOS/Windows) the session may start with a sandbox
+preflight warning saying the inner bubblewrap sandbox is dormant. That's
+expected and honest: on those platforms the devcontainer is the isolation
+boundary, and the warning exists so an inactive layer never silently looks
+active. See the layer table above — the other four layers are unaffected.
+
+Because the devcontainer is usually the effective boundary, it's worth knowing
+what it does and doesn't protect: it deliberately shares your host `~/.claude`
+credentials and grants the container user passwordless sudo, so it is **not** a
+boundary against a malicious dependency (an `npm install` postinstall runs with
+both). That's an accepted convenience tradeoff — pin and vet what you install,
+and lean on CI's dependency review. Full trust model:
+[`docs/sandbox.md` § Trust model & residual risk](docs/sandbox.md#trust-model--residual-risk).
+
+### 7. Confirm everything works
+
+```bash
+npm run verify              # the ground-truth gate: format + lint + tests
+npm run dev                 # frameworks with a dev server (React/Next.js)
+```
+
+The dev server port is forwarded out of the container automatically — open
+`http://localhost:5173` (React + Vite) or `http://localhost:3000` (Next.js) in
+your host browser.
 
 At any point, run `npx @sjhennig/claude-scaffold doctor` from the project root to check
 guardrail health: Claude Code installed, settings valid, hook scripts
 executable, the QC plugin's enablement and pinned release tag resolvable, and
 whether the sandbox is actually active (it reports honestly when it's dormant,
 e.g. on Docker Desktop). Exits non-zero on failures, so it's CI-friendly.
+
+**Day-to-day:** closing VS Code stops the container; reopening the folder
+offers to start it again. If you ever edit `.devcontainer/`, apply the change
+with Command Palette → **Dev Containers: Rebuild Container**. To work without
+Docker entirely, see [Prerequisites](#prerequisites).
+
+From here, the intended methodology is the [development workflow](#the-development-workflow) below.
 
 ## The Development Workflow
 
