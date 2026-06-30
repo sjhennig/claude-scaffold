@@ -137,6 +137,7 @@ describe('defaultAnswers (--yes semantics)', () => {
       useAnthropicApi: false,
       additionalKeys: [],
       isolatedCredentials: false,
+      networkFirewall: false,
       initGit: true,
     });
   });

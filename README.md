@@ -32,7 +32,7 @@ asked interactively (or defaulted by `--yes`):
 ```
 claude-scaffold <name> [--description <text>] [--framework <id>] [--port <n>]
                 [--anthropic-api] [--api-keys <a,b>] [--isolated-creds]
-                [--no-git] [--yes]
+                [--network-firewall] [--no-git] [--yes]
 claude-scaffold doctor   # guardrail health check in a scaffolded project
 ```
 
@@ -47,6 +47,7 @@ In interactive mode, you'll be prompted for:
 | Uses Anthropic API directly? | No                                       |
 | Additional API key names     | _(none)_                                 |
 | Isolate Claude credentials?  | No (bind-mounts host `~/.claude`)        |
+| Network-egress firewall?     | No (default-deny allowlist when enabled) |
 | Initialize git?              | Yes                                      |
 
 The scaffolded project is created at `./{project-name}` relative to your current directory.

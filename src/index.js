@@ -5,6 +5,7 @@ import { gatherInput } from './prompts.js';
 import {
   generateDockerfile,
   generateDevcontainerJson,
+  generateInitFirewallScript,
 } from './templates/devcontainer.js';
 import {
   generateClaudeMd,
@@ -73,7 +74,7 @@ export async function generateProject(config, root) {
 
   const commonFiles = [
     // Devcontainer
-    ['.devcontainer/Dockerfile', generateDockerfile()],
+    ['.devcontainer/Dockerfile', generateDockerfile(config)],
     ['.devcontainer/devcontainer.json', generateDevcontainerJson(config)],
 
     // Claude Code — guardrail core (framework-agnostic)
@@ -81,7 +82,10 @@ export async function generateProject(config, root) {
     ['.claude/settings.json', generateClaudeSettings()],
     ['.claude/hooks/validate-command.sh', generateValidateCommandScript()],
     ['.claude/hooks/verify-gate.sh', generateVerifyGateScript()],
-    ['.claude/hooks/sandbox-preflight.sh', generateSandboxPreflightScript()],
+    [
+      '.claude/hooks/sandbox-preflight.sh',
+      generateSandboxPreflightScript(config),
+    ],
     ['.claude/hooks/check-drift.sh', generateCheckDriftScript()],
     ['.claude/commands/README.md', generateCommandsReadme()],
 
@@ -110,6 +114,16 @@ export async function generateProject(config, root) {
     commonFiles.push(['docs/api-integration.md', generateApiIntegration()]);
   }
 
+  // Opt-in network-egress firewall (M9 Option A): the allowlist script the
+  // Dockerfile COPYs and postStartCommand runs. Only emitted when enabled, so
+  // it can't be a confusing dead file in projects that didn't ask for it.
+  if (config.networkFirewall) {
+    commonFiles.push([
+      '.devcontainer/init-firewall.sh',
+      generateInitFirewallScript(),
+    ]);
+  }
+
   // -- Framework-specific files --------------------------------------------
 
   const frameworkFiles = getFrameworkFiles(config);
@@ -123,13 +137,17 @@ export async function generateProject(config, root) {
 
   // Hook scripts must be executable. (Hooks invoke them via `bash`, so this is
   // ergonomics, not a hard requirement — and a no-op on Windows.)
-  for (const hookScript of [
+  const executableScripts = [
     '.claude/hooks/validate-command.sh',
     '.claude/hooks/verify-gate.sh',
     '.claude/hooks/sandbox-preflight.sh',
     '.claude/hooks/check-drift.sh',
-  ]) {
-    await chmod(join(root, hookScript), 0o755);
+    // The firewall script is run via sudo, but +x keeps it consistent and lets
+    // it be invoked directly while debugging the allowlist.
+    ...(config.networkFirewall ? ['.devcontainer/init-firewall.sh'] : []),
+  ];
+  for (const script of executableScripts) {
+    await chmod(join(root, script), 0o755);
   }
 
   // -- Create empty directories (with .gitkeep so git tracks them) ---------

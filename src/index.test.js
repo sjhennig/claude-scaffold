@@ -330,6 +330,39 @@ describe('run (orchestrator)', () => {
     expect(pkg.scripts).toHaveProperty('verify');
   });
 
+  it('emits an executable init-firewall.sh only when networkFirewall is set', async () => {
+    const config = withConfig({ networkFirewall: true });
+    gatherInput.mockResolvedValue(config);
+    await run();
+
+    const root = join(tempDir, config.projectName);
+    const fw = join(root, '.devcontainer/init-firewall.sh');
+    expect(await fileExists(fw)).toBe(true);
+    expect((await stat(fw)).mode & 0o100).toBe(0o100);
+
+    // The Dockerfile must COPY it and devcontainer.json must run it on start.
+    const dockerfile = await readFile(
+      join(root, '.devcontainer/Dockerfile'),
+      'utf-8',
+    );
+    expect(dockerfile).toContain('COPY init-firewall.sh');
+    const dc = JSON.parse(
+      await readFile(join(root, '.devcontainer/devcontainer.json'), 'utf-8'),
+    );
+    expect(dc.postStartCommand).toContain('init-firewall.sh');
+  });
+
+  it('does NOT emit init-firewall.sh by default', async () => {
+    const config = withConfig({});
+    gatherInput.mockResolvedValue(config);
+    await run();
+
+    const root = join(tempDir, config.projectName);
+    expect(await fileExists(join(root, '.devcontainer/init-firewall.sh'))).toBe(
+      false,
+    );
+  });
+
   it('includes docs/api-integration.md when useAnthropicApi is true', async () => {
     const config = withConfig({ useAnthropicApi: true });
     gatherInput.mockResolvedValue(config);

@@ -31,6 +31,7 @@ or defaulted with --yes):
   --api-keys <a,b>         extra API key names for .env
   --isolated-creds         keep Claude credentials in a container-local volume
                            (host ~/.claude not exposed; re-auth inside container)
+  --network-firewall       add a default-deny egress allowlist to the devcontainer
   --no-git                 skip git init
   -y, --yes                accept defaults for every unanswered prompt
   -h, --help               show this help`;
@@ -65,6 +66,7 @@ export function parseCliArgs(argv) {
         'anthropic-api': { type: 'boolean' },
         'api-keys': { type: 'string' },
         'isolated-creds': { type: 'boolean' },
+        'network-firewall': { type: 'boolean' },
         'no-git': { type: 'boolean' },
         yes: { type: 'boolean', short: 'y' },
         help: { type: 'boolean', short: 'h' },
@@ -126,6 +128,7 @@ export function parseCliArgs(argv) {
   if (values['api-keys'] !== undefined)
     provided.additionalKeys = normalizeAdditionalKeys(values['api-keys']);
   if (values['isolated-creds']) provided.isolatedCredentials = true;
+  if (values['network-firewall']) provided.networkFirewall = true;
   if (values['no-git']) provided.initGit = false;
 
   // --yes is for scripts/CI: it must never fall back to a prompt, and the one

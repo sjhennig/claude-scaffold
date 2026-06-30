@@ -4,6 +4,7 @@ import { join } from 'node:path';
 import {
   generateDockerfile,
   generateDevcontainerJson,
+  generateInitFirewallScript,
 } from './devcontainer.js';
 
 // True if the Dockerfile installs `tool` via its apt-get line. The tools sit on
@@ -154,6 +155,119 @@ describe('generateDevcontainerJson', () => {
     expect(result.features).toHaveProperty(
       'ghcr.io/devcontainers/features/github-cli:1',
     );
+  });
+});
+
+describe('network-egress firewall (opt-in, M9 Option A)', () => {
+  it('omits all firewall machinery by default', () => {
+    const dockerfile = generateDockerfile(baseConfig);
+    expect(dockerfile).not.toContain('iptables');
+    expect(dockerfile).not.toContain('init-firewall.sh');
+
+    const dc = JSON.parse(generateDevcontainerJson(baseConfig));
+    expect(dc.runArgs).toBeUndefined();
+    expect(dc.postStartCommand).toBeUndefined();
+  });
+
+  it('adds firewall packages and copies the script when enabled', () => {
+    const dockerfile = generateDockerfile(
+      withConfig({ networkFirewall: true }),
+    );
+    for (const pkg of ['iptables', 'ipset', 'iproute2', 'dnsutils']) {
+      expect(dockerfile).toContain(pkg);
+    }
+    expect(dockerfile).toContain(
+      'COPY init-firewall.sh /usr/local/bin/init-firewall.sh',
+    );
+  });
+
+  it('narrows node sudo to only the firewall script when enabled', () => {
+    // With the firewall on, blanket NOPASSWD:ALL would let a malicious dependency
+    // (running as node) flush the allowlist via sudo — so the grant must narrow.
+    const dockerfile = generateDockerfile(
+      withConfig({ networkFirewall: true }),
+    );
+    expect(dockerfile).toContain('NOPASSWD: /usr/local/bin/init-firewall.sh');
+    // The active grant must not be the blanket rule (a comment may still mention
+    // it as the re-add hint — assert on the RUN line, not a bare substring).
+    expect(dockerfile).not.toContain('RUN echo "node ALL=(ALL) NOPASSWD:ALL"');
+  });
+
+  it('keeps blanket dev sudo when the firewall is off (default)', () => {
+    expect(generateDockerfile(baseConfig)).toContain(
+      'RUN echo "node ALL=(ALL) NOPASSWD:ALL"',
+    );
+  });
+
+  it('grants NET_ADMIN/NET_RAW and runs the script on start when enabled', () => {
+    const dc = JSON.parse(
+      generateDevcontainerJson(withConfig({ networkFirewall: true })),
+    );
+    expect(dc.runArgs).toContain('--cap-add=NET_ADMIN');
+    expect(dc.runArgs).toContain('--cap-add=NET_RAW');
+    expect(dc.postStartCommand).toBe('sudo /usr/local/bin/init-firewall.sh');
+  });
+
+  it('brings the firewall up before the initial npm install', () => {
+    const dc = JSON.parse(
+      generateDevcontainerJson(withConfig({ networkFirewall: true })),
+    );
+    // The prime spot for a malicious postinstall is the first dependency
+    // install, so the firewall must run ahead of it in postCreateCommand.
+    expect(dc.postCreateCommand).toBe(
+      'sudo /usr/local/bin/init-firewall.sh && npm install',
+    );
+    const cmd = dc.postCreateCommand;
+    expect(cmd.indexOf('init-firewall.sh')).toBeLessThan(
+      cmd.indexOf('npm install'),
+    );
+  });
+});
+
+describe('generateInitFirewallScript', () => {
+  const script = generateInitFirewallScript();
+
+  it('sets a default-DROP egress policy', () => {
+    expect(script).toContain('iptables -P OUTPUT DROP');
+    expect(script).toContain('iptables -P INPUT DROP');
+  });
+
+  it('allowlists the registries Claude Code + npm + the plugin marketplace need', () => {
+    expect(script).toContain('registry.npmjs.org');
+    expect(script).toContain('api.anthropic.com');
+    // GitHub ranges (covers github.com, the API/CDN, and the marketplace tarball)
+    expect(script).toContain('api.github.com/meta');
+    expect(script).toContain('allowed-domains');
+  });
+
+  it('fails closed: verifies a blocked host is blocked and an allowed host reachable', () => {
+    // A blocked host that still resolves => exit 1; an allowed host that fails => exit 1.
+    expect(script).toContain('https://example.com');
+    expect(script).toContain('api.github.com/zen');
+    expect(script).toContain('exit 1');
+    expect(script).toContain('set -euo pipefail');
+  });
+
+  it('fails closed on setup error via an EXIT trap that forces DROP', () => {
+    // A failed GitHub fetch / DNS miss aborts under set -e BEFORE the final DROP;
+    // the trap must force a default-DROP so a setup failure leaves no egress.
+    expect(script).toContain('trap firewall_fail_closed EXIT');
+    expect(script).toContain('forcing default-DROP');
+  });
+
+  it('locks down IPv6 (the allowlist is IPv4-only)', () => {
+    expect(script).toContain('ip6tables -P OUTPUT DROP');
+    expect(script).toContain('command -v ip6tables');
+  });
+
+  it('scopes DNS to the configured resolvers, not the whole internet', () => {
+    // A blanket "port 53 anywhere" rule is a DNS-tunnel exfil channel.
+    expect(script).toContain('/etc/resolv.conf');
+    expect(script).toContain('--dport 53');
+  });
+
+  it('degrades gracefully when the aggregate tool is absent', () => {
+    expect(script).toContain('command -v aggregate');
   });
 });
 

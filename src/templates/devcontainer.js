@@ -2,7 +2,52 @@
  * Generates .devcontainer/Dockerfile and .devcontainer/devcontainer.json
  */
 
-export function generateDockerfile() {
+export function generateDockerfile(config = {}) {
+  // Opt-in network-egress firewall (M9 Option A; docs/specs/network-isolation.md):
+  // extra packages for the iptables/ipset allowlist, plus the script copied into
+  // the image and run on start via devcontainer.json's postStartCommand.
+  const firewallPackages = config.networkFirewall
+    ? `    iptables \\
+    ipset \\
+    iproute2 \\
+    dnsutils \\
+    aggregate \\
+`
+    : '';
+  const firewallCopy = config.networkFirewall
+    ? `
+# Network-egress firewall (opt-in): the allowlist script, run via sudo on every
+# container start (see devcontainer.json postStartCommand). Owned by root and not
+# writable by node, so a compromised dependency can't edit it — and node's sudo
+# is narrowed to ONLY this script (below) so that dependency can't flush the
+# allowlist either.
+COPY init-firewall.sh /usr/local/bin/init-firewall.sh
+RUN chmod 0755 /usr/local/bin/init-firewall.sh
+`
+    : '';
+
+  // Sudo for the node user. Default is blanket passwordless sudo (dev
+  // convenience). With the firewall on we NARROW it to just the firewall script:
+  // otherwise a dependency postinstall running as node could \`sudo iptables -F\`
+  // and tear down the very egress allowlist the firewall exists to enforce.
+  // Claude itself is denied sudo via \`Bash(sudo:*)\` in settings either way.
+  const sudoersBlock = config.networkFirewall
+    ? `# Network firewall enabled: node's sudo is narrowed to ONLY the firewall script,
+# so in-container code (e.g. a malicious dependency postinstall running as node)
+# cannot flush the egress allowlist. This intentionally drops blanket dev sudo;
+# re-add "node ALL=(ALL) NOPASSWD:ALL" if you need ad-hoc apt-get, accepting that
+# it also lets in-container code disable the firewall.
+RUN echo "node ALL=(ALL) NOPASSWD: /usr/local/bin/init-firewall.sh" > /etc/sudoers.d/node`
+    : `# Passwordless sudo for the human developer (e.g. ad-hoc apt-get installs while
+# iterating in the container). Claude itself cannot escalate: \`Bash(sudo:*)\` is
+# in the permissions deny-list in .claude/settings.json, so the agent is blocked
+# from sudo regardless. Residual risk: dependency code — an \`npm install\`
+# postinstall script (run by postCreateCommand) executes as the node user and
+# can use this grant to reach root *inside the container*. The container is not a
+# boundary against malicious deps; pin/vet dependencies and rely on CI's
+# dependency review. Remove this line if you don't need dev sudo.
+RUN echo "node ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers.d/node`;
+
   return `FROM node:20-bookworm-slim
 
 # Core dev tools for CLI productivity inside the container.
@@ -22,17 +67,9 @@ RUN apt-get update && apt-get install -y \\
     sudo \\
     bubblewrap \\
     socat \\
-    && rm -rf /var/lib/apt/lists/*
-
-# Passwordless sudo for the human developer (e.g. ad-hoc apt-get installs while
-# iterating in the container). Claude itself cannot escalate: \`Bash(sudo:*)\` is
-# in the permissions deny-list in .claude/settings.json, so the agent is blocked
-# from sudo regardless. Residual risk: dependency code — an \`npm install\`
-# postinstall script (run by postCreateCommand) executes as the node user and
-# can use this grant to reach root *inside the container*. The container is not a
-# boundary against malicious deps; pin/vet dependencies and rely on CI's
-# dependency review. Remove this line if you don't need dev sudo.
-RUN echo "node ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers.d/node
+${firewallPackages}    && rm -rf /var/lib/apt/lists/*
+${firewallCopy}
+${sudoersBlock}
 
 # Give the node user a writable global npm prefix. The default prefix in this
 # image is the root-owned /usr/local, so a root-level \`npm install -g\` leaves
@@ -99,12 +136,192 @@ export function generateDevcontainerJson(config) {
       // Persist bash history across container rebuilds
       'source=claude-scaffold-bashhistory,target=/home/node/.bash_history_dir,type=volume',
     ],
+    // Network-egress firewall (opt-in; M9 Option A). NET_ADMIN/NET_RAW let the
+    // container manage its own iptables/ipset rules — these work even where the
+    // bwrap sandbox can't (no unprivileged user namespaces, e.g. Docker
+    // Desktop's LinuxKit VM), so this restores a real egress boundary there.
+    // The script fails closed: a too-tight allowlist surfaces at container start
+    // rather than silently. It runs on every start (postStartCommand) AND ahead
+    // of the initial `npm install` (postCreateCommand below), so even the first
+    // dependency install — the prime spot for a malicious postinstall — is
+    // firewalled. (The allowlist already permits the npm registry.)
+    ...(config.networkFirewall
+      ? {
+          runArgs: ['--cap-add=NET_ADMIN', '--cap-add=NET_RAW'],
+          postStartCommand: 'sudo /usr/local/bin/init-firewall.sh',
+        }
+      : {}),
     features: {
       'ghcr.io/devcontainers/features/github-cli:1': {},
     },
-    postCreateCommand: 'npm install',
+    postCreateCommand: config.networkFirewall
+      ? 'sudo /usr/local/bin/init-firewall.sh && npm install'
+      : 'npm install',
     remoteUser: 'node',
   };
 
   return JSON.stringify(devcontainer, null, 2) + '\n';
+}
+
+// .devcontainer/init-firewall.sh — the opt-in network-egress allowlist (M9
+// Option A; emitted only when config.networkFirewall, run as root by
+// postStartCommand). Default egress policy is DROP; only DNS, localhost, the
+// host/LAN, the GitHub IP ranges (covers github.com, the API/CDN, and the
+// plugin marketplace), the npm registry, and the Anthropic endpoints Claude
+// Code needs are allowed out. It FAILS CLOSED: a misbuilt allowlist makes the
+// verification block exit non-zero, surfacing the breakage at container start
+// instead of letting an inert firewall look active.
+//
+// Maintaining the allowlist is real work — too tight and `npm install` /
+// plugin-resolution break; widen the ALLOWED_DOMAINS list below for registries
+// or CDNs your project pulls from.
+export function generateInitFirewallScript() {
+  return `#!/usr/bin/env bash
+# Network-egress firewall — build an iptables/ipset allowlist and default-DROP
+# everything else. Run as root on container start (devcontainer.json
+# postStartCommand: "sudo /usr/local/bin/init-firewall.sh"). Requires the
+# NET_ADMIN/NET_RAW caps the devcontainer adds via runArgs.
+#
+# Unlike the bwrap sandbox, this operates in the container's *network* namespace
+# and needs no unprivileged user namespaces, so it enforces even on Docker
+# Desktop's LinuxKit VM. See docs/specs/network-isolation.md and docs/sandbox.md.
+set -euo pipefail
+IFS=$'\\n\\t'
+
+# Fail closed: if anything below aborts (a failed GitHub fetch, a DNS miss, or
+# any other error under \`set -e\`), force a default-DROP so a setup failure leaves
+# the container with NO egress rather than wide open. The DROP policies are
+# applied only at the very end on the happy path, so without this an early exit
+# would leave OUTPUT at its default ACCEPT. On success (exit 0) this is a no-op.
+firewall_fail_closed() {
+  local rc=$?
+  [ "$rc" -eq 0 ] && return 0
+  echo "init-firewall: setup failed (exit $rc) — forcing default-DROP, no egress" >&2
+  iptables -P INPUT DROP 2>/dev/null || true
+  iptables -P OUTPUT DROP 2>/dev/null || true
+  iptables -P FORWARD DROP 2>/dev/null || true
+  if command -v ip6tables >/dev/null 2>&1; then
+    ip6tables -P INPUT DROP 2>/dev/null || true
+    ip6tables -P OUTPUT DROP 2>/dev/null || true
+    ip6tables -P FORWARD DROP 2>/dev/null || true
+  fi
+}
+trap firewall_fail_closed EXIT
+
+# Domains allowed out (besides the GitHub IP ranges fetched below). Add the
+# registries/CDNs your project needs here — too tight and installs break.
+ALLOWED_DOMAINS=(
+  registry.npmjs.org
+  api.anthropic.com
+  statsig.anthropic.com
+  sentry.io
+)
+
+echo "init-firewall: resetting rules..."
+iptables -F
+iptables -X
+iptables -t nat -F 2>/dev/null || true
+iptables -t mangle -F 2>/dev/null || true
+ipset destroy allowed-domains 2>/dev/null || true
+
+# Loopback first (covers Docker's embedded DNS at 127.0.0.11).
+iptables -A INPUT -i lo -j ACCEPT
+iptables -A OUTPUT -o lo -j ACCEPT
+
+# DNS only to the configured resolver(s), not the whole internet — a blanket
+# "allow port 53 anywhere" is an open DNS-tunnel exfiltration channel. Fall back
+# to broad DNS only if no IPv4 nameserver is listed (e.g. embedded DNS, already
+# covered by loopback above).
+resolvers="$(awk '/^nameserver/ {print $2}' /etc/resolv.conf 2>/dev/null | grep -E '^[0-9]+\\.' || true)"
+if [ -n "$resolvers" ]; then
+  while read -r ns; do
+    [ -z "$ns" ] && continue
+    iptables -A OUTPUT -p udp -d "$ns" --dport 53 -j ACCEPT
+    iptables -A OUTPUT -p tcp -d "$ns" --dport 53 -j ACCEPT
+  done <<< "$resolvers"
+else
+  iptables -A OUTPUT -p udp --dport 53 -j ACCEPT
+  iptables -A OUTPUT -p tcp --dport 53 -j ACCEPT
+fi
+
+ipset create allowed-domains hash:net
+
+# GitHub publishes its IP ranges; allow web+api+git (covers github.com, the API,
+# codeload, and the plugin marketplace's release tarballs). \`aggregate\` merges
+# the CIDRs when present; fall back to the raw list if it isn't installed.
+echo "init-firewall: fetching GitHub IP ranges..."
+gh_ranges="$(curl -fsSL --connect-timeout 10 https://api.github.com/meta)"
+if [ -z "$gh_ranges" ] || ! echo "$gh_ranges" | jq -e '.web and .api and .git' >/dev/null 2>&1; then
+  echo "init-firewall: ERROR — could not fetch a valid GitHub meta response" >&2
+  exit 1
+fi
+if command -v aggregate >/dev/null 2>&1; then
+  gh_cidrs="$(echo "$gh_ranges" | jq -r '(.web + .api + .git)[]' | grep -E '^[0-9]+\\.' | aggregate -q)"
+else
+  gh_cidrs="$(echo "$gh_ranges" | jq -r '(.web + .api + .git)[]' | grep -E '^[0-9]+\\.' | sort -u)"
+fi
+while read -r cidr; do
+  [ -z "$cidr" ] && continue
+  ipset add allowed-domains "$cidr" 2>/dev/null || true
+done <<< "$gh_cidrs"
+
+# Resolve each allowed domain to its current A records and allow them.
+for domain in "\${ALLOWED_DOMAINS[@]}"; do
+  echo "init-firewall: resolving $domain..."
+  ips="$(dig +short A "$domain" | grep -E '^[0-9]+\\.' || true)"
+  if [ -z "$ips" ]; then
+    echo "init-firewall: ERROR — could not resolve $domain" >&2
+    exit 1
+  fi
+  while read -r ip; do
+    [ -z "$ip" ] && continue
+    ipset add allowed-domains "$ip" 2>/dev/null || true
+  done <<< "$ips"
+done
+
+# Allow the host/LAN (default-route subnet) so the VS Code server, port
+# forwarding, and devcontainer tooling keep working.
+host_ip="$(ip route show default | awk '/default/ {print $3; exit}')"
+if [ -n "\${host_ip:-}" ]; then
+  host_net="$(echo "$host_ip" | sed 's/\\.[0-9]*$/.0\\/24/')"
+  iptables -A INPUT -s "$host_net" -j ACCEPT
+  iptables -A OUTPUT -d "$host_net" -j ACCEPT
+fi
+
+# Default DROP, then allow established/related and the allowlist set.
+iptables -P INPUT DROP
+iptables -P FORWARD DROP
+iptables -P OUTPUT DROP
+iptables -A INPUT -m state --state ESTABLISHED,RELATED -j ACCEPT
+iptables -A OUTPUT -m state --state ESTABLISHED,RELATED -j ACCEPT
+iptables -A OUTPUT -m set --match-set allowed-domains dst -j ACCEPT
+
+# Lock down IPv6 entirely: the allowlist (ipset hash:net) is IPv4-only, so any
+# permitted IPv6 egress would be an un-allowlisted hole (many hosts publish AAAA
+# records). Drop all IPv6 except loopback and established/related. Best-effort —
+# skip if ip6tables is unavailable.
+if command -v ip6tables >/dev/null 2>&1; then
+  ip6tables -F 2>/dev/null || true
+  ip6tables -P INPUT DROP 2>/dev/null || true
+  ip6tables -P FORWARD DROP 2>/dev/null || true
+  ip6tables -P OUTPUT DROP 2>/dev/null || true
+  ip6tables -A INPUT -i lo -j ACCEPT 2>/dev/null || true
+  ip6tables -A OUTPUT -o lo -j ACCEPT 2>/dev/null || true
+  ip6tables -A INPUT -m state --state ESTABLISHED,RELATED -j ACCEPT 2>/dev/null || true
+  ip6tables -A OUTPUT -m state --state ESTABLISHED,RELATED -j ACCEPT 2>/dev/null || true
+fi
+
+# Verify the policy actually holds — fail closed if either assertion is wrong,
+# so a broken allowlist shows up at start rather than masquerading as active.
+echo "init-firewall: verifying..."
+if curl --connect-timeout 5 -fsS https://example.com >/dev/null 2>&1; then
+  echo "init-firewall: ERROR — reached example.com, but it is not allowlisted (DROP not enforced)" >&2
+  exit 1
+fi
+if ! curl --connect-timeout 5 -fsS https://api.github.com/zen >/dev/null 2>&1; then
+  echo "init-firewall: ERROR — could not reach api.github.com, which should be allowed" >&2
+  exit 1
+fi
+echo "init-firewall: allowlist active (default-DROP, GitHub + npm + Anthropic permitted)."
+`;
 }
