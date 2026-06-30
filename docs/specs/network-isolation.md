@@ -151,18 +151,31 @@ the higher-security option. The two are a clean either/or in the same mount
 slot, so this is the cheaper of the two options to implement and the easiest to
 make a user decision rather than a hardcoded one.
 
-## Open decisions
+## Decision (2026-06-30)
 
-- Firewall as opt-in flag vs. always-on default — leaning opt-in (allowlist
-  breakage risk). Decide the flag/prompt surface alongside the existing sandbox
-  opt-in.
+Adopt **both**, as M9, phased by cost/risk (see NOTES.md 2026-06-30):
+
+1. **Option B — ✅ shipped.** `isolatedCredentials` config field, exposed as the
+   `--isolated-creds` flag and an interactive prompt, defaulting to the current
+   host bind-mount. When set, `generateDevcontainerJson()` emits a container-local
+   named volume (`source=claude-config-${devcontainerId}`) instead of the host
+   bind. See `src/templates/devcontainer.js`, `src/prompts.js`, `src/cli-args.js`.
+2. **Option A next** — opt-in `--network-firewall` flag, **never an
+   unconditional default** (allowlist-breakage risk).
+
+### Resolved
+
+- **Firewall gating** → opt-in flag (`--network-firewall`), not always-on.
+- **Credentials** → bind-mount default with `isolated-volume` opt-in (not
+  splitting persisted _config_ from _credentials_, at least initially).
+
+### Still open (settle when Option A is built)
+
 - Whether adopting the firewall should also narrow the `node` sudoers grant to
   just the firewall script (couples to the human-dev-sudo convenience trade-off).
 - Allowlist contents + refresh strategy (runtime fetch of GitHub ranges vs.
   pinned CIDRs) — must cover npm registry, GitHub (incl. plugin marketplace),
   and the Anthropic API or it breaks generated-project bootstrap.
-- Credentials: bind-mount default with volume opt-in, vs. splitting persisted
-  _config_ from _credentials_.
-- If either ships, fold it into `docs/sandbox.md`'s layer model, add a NOTES.md
-  decision entry, and register the new owning files in
+- On ship: fold into `docs/sandbox.md`'s layer model, reconcile the preflight
+  "no boundary" message, and register the new owning files in
   `docs/specs/subsystem-map.json`.

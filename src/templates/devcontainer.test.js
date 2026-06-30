@@ -114,13 +114,27 @@ describe('generateDevcontainerJson', () => {
     expect(extensions).toHaveLength(4);
   });
 
-  it('includes the Claude auth bind mount', () => {
+  it('defaults to the Claude auth host bind mount', () => {
     const result = JSON.parse(generateDevcontainerJson(baseConfig));
     const claudeMount = result.mounts.find((m) => m.includes('.claude'));
     expect(claudeMount).toBeDefined();
     expect(claudeMount).toContain('source=${localEnv:HOME}/.claude');
     expect(claudeMount).toContain('target=/home/node/.claude');
     expect(claudeMount).toContain('type=bind');
+  });
+
+  it('uses a container-local named volume when credentials are isolated', () => {
+    const result = JSON.parse(
+      generateDevcontainerJson(withConfig({ isolatedCredentials: true })),
+    );
+    const claudeMount = result.mounts.find((m) =>
+      m.includes('/home/node/.claude'),
+    );
+    expect(claudeMount).toBeDefined();
+    expect(claudeMount).toContain('source=claude-config-${devcontainerId}');
+    expect(claudeMount).toContain('type=volume');
+    // The host home directory must NOT appear in the isolated variant.
+    expect(claudeMount).not.toContain('localEnv:HOME');
   });
 
   it('includes the bash history volume', () => {

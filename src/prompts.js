@@ -104,6 +104,13 @@ const questions = [
   },
   {
     type: 'confirm',
+    name: 'isolatedCredentials',
+    message:
+      'Isolate Claude credentials in a container-local volume? (more secure — host ~/.claude is never exposed — but you authenticate inside the container)',
+    default: false,
+  },
+  {
+    type: 'confirm',
     name: 'initGit',
     message: 'Initialize git?',
     default: true,
@@ -122,6 +129,7 @@ export function defaultAnswers(provided = {}) {
       : { devPort: DEFAULT_PORTS[framework] ?? 3000 }),
     useAnthropicApi: false,
     additionalKeys: [],
+    isolatedCredentials: false,
     initGit: true,
     ...provided,
   };
