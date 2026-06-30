@@ -32,6 +32,7 @@ offline can prove the pinned release tag exists on origin; doctor can).
 | ------------------ | ----------------------------------------------- | --------------------------------------------------------- |
 | Node.js version    | below `NODE_MAJOR_REQUIRED` (20)                | —                                                         |
 | Claude Code CLI    | not on PATH                                     | older than `CLAUDE_CODE_MIN_VERSION`                      |
+| npm global prefix  | —                                               | prefix not writable by the user, or unresolvable          |
 | Claude settings    | `.claude/settings.json` missing or invalid JSON | —                                                         |
 | Hook scripts       | referenced script missing or not executable     | settings wire no hook scripts at all                      |
 | Plugin enablement  | enabled id's marketplace not in settings        | nothing enabled                                           |

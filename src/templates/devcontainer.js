@@ -34,13 +34,25 @@ RUN apt-get update && apt-get install -y \\
 # dependency review. Remove this line if you don't need dev sudo.
 RUN echo "node ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers.d/node
 
-# Pre-install Claude Code so it's available immediately on container start
-RUN npm install -g @anthropic-ai/claude-code
+# Give the node user a writable global npm prefix. The default prefix in this
+# image is the root-owned /usr/local, so a root-level \`npm install -g\` leaves
+# Claude Code's files unwritable by the node user — and its in-container
+# auto-updater (which runs as node) then fails with "no write permission to npm
+# prefix". A node-owned prefix lets the first install and every self-update write.
+RUN mkdir -p /usr/local/share/npm-global \\
+    && chown -R node:node /usr/local/share
+ENV NPM_CONFIG_PREFIX=/usr/local/share/npm-global
+ENV PATH=$PATH:/usr/local/share/npm-global/bin
 
 # Persist bash history across container rebuilds via a named volume
 RUN mkdir -p /home/node/.bash_history_dir && chown node:node /home/node/.bash_history_dir
 
 USER node
+
+# Pre-install Claude Code as node (into the node-owned prefix above) so it's
+# available immediately on container start AND can auto-update in place.
+RUN npm install -g @anthropic-ai/claude-code
+
 WORKDIR /workspace
 `;
 }
