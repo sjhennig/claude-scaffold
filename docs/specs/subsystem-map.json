@@ -33,6 +33,11 @@
       "name": "distribution",
       "files": ["scripts/pack-test.mjs", ".github/workflows/publish.yml"],
       "spec": "docs/specs/distribution.md"
+    },
+    {
+      "name": "network-isolation",
+      "files": ["src/templates/devcontainer.js"],
+      "spec": "docs/specs/network-isolation.md"
     }
   ]
 }

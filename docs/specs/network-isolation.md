@@ -1,14 +1,14 @@
-# Network Isolation & Credential Handling — Findings Spec
+# Network Isolation & Credential Handling — Subsystem Spec
 
 <!--
-FINDINGS / FUTURE-WORK doc, not yet a live subsystem. It captures two
-divergences between this project's devcontainer and Anthropic's reference
-devcontainer (anthropics/claude-code/.devcontainer), surfaced while fixing the
-npm-prefix auto-update bug (NOTES.md 2026-06-30). Nothing here is implemented
-yet — it exists so the author can evaluate and tackle these after confirming the
-prefix fix. NOT registered in subsystem-map.json (no owning source files until
-one of these is adopted). Promote the relevant section into a real subsystem
-spec + NOTES decision if/when implemented.
+Began as a findings doc comparing this project's devcontainer with Anthropic's
+reference devcontainer (anthropics/claude-code/.devcontainer), surfaced while
+fixing the npm-prefix auto-update bug (NOTES.md 2026-06-30). Both divergences are
+now IMPLEMENTED as M9 opt-ins (Option B: isolated-volume credentials; Option A:
+network-egress firewall) — so this is a live subsystem, registered in
+subsystem-map.json (owning src/templates/devcontainer.js). Keep the findings
+below as the rationale of record; update the Decision/Status block when behavior
+changes.
 -->
 
 ## Purpose
@@ -160,22 +160,50 @@ Adopt **both**, as M9, phased by cost/risk (see NOTES.md 2026-06-30):
    host bind-mount. When set, `generateDevcontainerJson()` emits a container-local
    named volume (`source=claude-config-${devcontainerId}`) instead of the host
    bind. See `src/templates/devcontainer.js`, `src/prompts.js`, `src/cli-args.js`.
-2. **Option A next** — opt-in `--network-firewall` flag, **never an
-   unconditional default** (allowlist-breakage risk).
+2. **Option A — ✅ shipped.** `networkFirewall` config field, exposed as the
+   `--network-firewall` flag and an interactive prompt, off by default. When set,
+   `generateDockerfile()` adds `iptables ipset iproute2 dnsutils aggregate`,
+   `COPY`s the root-owned script, and **narrows node's sudo to only that script**;
+   `generateDevcontainerJson()` adds the `NET_ADMIN`/`NET_RAW` caps, a
+   `postStartCommand`, and runs the firewall ahead of the first `npm install` in
+   `postCreateCommand`; and `generateInitFirewallScript()` emits
+   `.devcontainer/init-firewall.sh` (default-DROP, IPv4+IPv6, resolver-scoped DNS,
+   fail-closed via an EXIT trap). See `src/templates/devcontainer.js`,
+   `src/index.js`.
 
 ### Resolved
 
 - **Firewall gating** → opt-in flag (`--network-firewall`), not always-on.
 - **Credentials** → bind-mount default with `isolated-volume` opt-in (not
   splitting persisted _config_ from _credentials_, at least initially).
+- **Allowlist refresh** → fetch GitHub ranges at runtime (`api.github.com/meta`)
+  - resolve a small `ALLOWED_DOMAINS` list (npm registry, Anthropic endpoints)
+    at start; no pinned CIDRs to rot. Editable in the emitted script.
+- **Preflight honesty** → `generateSandboxPreflightScript(config)` appends a note
+  when the firewall is on, so the dormant-bwrap warning doesn't imply "no
+  network boundary."
+- **Sudo** → when the firewall is on, **narrow** node's grant to only
+  `/usr/local/bin/init-firewall.sh` (was blanket `NOPASSWD:ALL`). Otherwise a
+  dependency postinstall running as node could `sudo iptables -F` and tear down
+  the allowlist the firewall exists to enforce — the feature would be theater.
+  This drops blanket dev sudo only in firewalled projects (documented in the
+  Dockerfile comment); the default keeps blanket sudo. Decided this way after the
+  security review flagged the bypass; supersedes the earlier "leave sudo blank"
+  lean from NOTES.md 2026-06-30.
+- **Fail-closed / IPv6 / DNS** (security-review hardening) → the script (a) sets
+  an EXIT trap forcing default-DROP so an early abort (failed GitHub fetch, DNS
+  miss) leaves no egress rather than the default ACCEPT; (b) drops all IPv6
+  egress (the ipset allowlist is IPv4-only, so permitted AAAA traffic would be a
+  hole); (c) scopes the DNS allow rules to the resolvers in `/etc/resolv.conf`
+  rather than port 53 to anywhere (which is a DNS-tunnel exfil channel).
+- **First install firewalled** → the firewall runs in `postCreateCommand` ahead
+  of the initial `npm install`, not just `postStartCommand`, so the prime
+  malicious-postinstall window is covered (the allowlist already permits npm).
 
-### Still open (settle when Option A is built)
+### Still open
 
-- Whether adopting the firewall should also narrow the `node` sudoers grant to
-  just the firewall script (couples to the human-dev-sudo convenience trade-off).
-- Allowlist contents + refresh strategy (runtime fetch of GitHub ranges vs.
-  pinned CIDRs) — must cover npm registry, GitHub (incl. plugin marketplace),
-  and the Anthropic API or it breaks generated-project bootstrap.
-- On ship: fold into `docs/sandbox.md`'s layer model, reconcile the preflight
-  "no boundary" message, and register the new owning files in
-  `docs/specs/subsystem-map.json`.
+- Whether to dogfood the firewall on this repo's own `.devcontainer/` (it would
+  prove the LinuxKit-VM enforcement claim end-to-end, but risks disrupting active
+  sessions; left as a deliberate follow-up).
+- Whether a `doctor` check should verify the firewall is actually active in a
+  scaffolded project that enabled it (parallel to the sandbox-honesty check).

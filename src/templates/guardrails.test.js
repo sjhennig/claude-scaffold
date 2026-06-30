@@ -165,6 +165,19 @@ describe('generateSandboxPreflightScript', () => {
   it('stays silent when it cannot tell (no jq / no settings file)', () => {
     expect(script).toContain('command -v jq');
   });
+
+  it('omits the firewall note by default', () => {
+    expect(script).not.toContain('network-egress firewall');
+  });
+
+  it('appends a firewall note when networkFirewall is enabled', () => {
+    // M9 Option A: when the egress firewall is on, the dormant-bwrap warning must
+    // not read as "no network boundary" — the firewall is a real one.
+    const withFirewall = generateSandboxPreflightScript({
+      networkFirewall: true,
+    });
+    expect(withFirewall).toContain('network-egress firewall');
+  });
 });
 
 describe('generateCheckDriftScript', () => {

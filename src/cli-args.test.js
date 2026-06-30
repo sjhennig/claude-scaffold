@@ -38,6 +38,7 @@ describe('parseCliArgs', () => {
       '--api-keys',
       'stripe key, github',
       '--isolated-creds',
+      '--network-firewall',
       '--no-git',
       '--yes',
     ]);
@@ -51,6 +52,7 @@ describe('parseCliArgs', () => {
       useAnthropicApi: true,
       additionalKeys: ['STRIPE_KEY', 'GITHUB'],
       isolatedCredentials: true,
+      networkFirewall: true,
       initGit: false,
     });
   });

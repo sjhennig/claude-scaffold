@@ -46,7 +46,7 @@ LOCAL_MARKETPLACE_SOURCE  = { source: "directory", path: "." }
 
 generateValidateCommandScript()  -> string   // PreToolUse Bash denylist (exit 2 = block)
 generateVerifyGateScript()       -> string   // Stop gate: `npm run verify`, exit 2 = keep working
-generateSandboxPreflightScript() -> string   // SessionStart: warn if sandbox enabled but bwrap can't run
+generateSandboxPreflightScript(config?) -> string  // SessionStart: warn if sandbox enabled but bwrap can't run; config.networkFirewall appends a note that the egress firewall is a real boundary (see [[network-isolation]])
 generateCheckDriftScript()       -> string   // SessionStart: warn on spec drift (this file's enforcement)
 ```
 
@@ -79,7 +79,9 @@ generateCheckDriftScript()       -> string   // SessionStart: warn on spec drift
 
 - **Sandbox enabled but inert** (Docker Desktop LinuxKit, no user namespaces):
   preflight detects `bwrap` cannot create a namespace and warns; it does not
-  weaken the container. See [[sandbox-preflight-and-macos-vm]].
+  weaken the container. See [[sandbox-preflight-and-macos-vm]]. When the opt-in
+  network-egress firewall is enabled, the warning appends a note so it doesn't
+  imply "no network boundary" (the firewall enforces even where bwrap can't).
 - **Verify cannot be made to pass:** the Stop gate has a session-scoped counter
   (`MAX_ATTEMPTS=3`) and releases with a warning so it can never deadlock.
 - **Drift hook on a fresh/young repo:** no map, empty map, or fewer than

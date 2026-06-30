@@ -323,7 +323,14 @@ exit 2
 `;
 }
 
-export function generateSandboxPreflightScript() {
+export function generateSandboxPreflightScript(config = {}) {
+  // When the opt-in egress firewall is enabled (M9 Option A), the dormant-bwrap
+  // warning would otherwise imply "no boundary" — but the firewall is a real,
+  // independent network boundary that works where bwrap can't. Append a note so
+  // the message stays honest in both directions.
+  const firewallNote = config.networkFirewall
+    ? ' (A network-egress firewall (iptables allowlist) is configured separately and DOES enforce here, so network egress is still restricted even with bwrap dormant.)'
+    : '';
   return `#!/usr/bin/env bash
 # SessionStart preflight — verify the configured sandbox can actually run.
 #
@@ -350,12 +357,12 @@ ENABLED=$(jq -r '.sandbox.enabled // false' "$SETTINGS" 2>/dev/null)
 
 # Sandbox is enabled — is bubblewrap present and able to create a namespace?
 if ! command -v bwrap >/dev/null 2>&1; then
-  echo "⚠️  Sandbox preflight: settings.json sets sandbox.enabled=true, but 'bwrap' (bubblewrap) is not installed — the sandbox cannot start, so Bash commands run with only the devcontainer as the isolation boundary. Install bubblewrap, or set sandbox.enabled=false to drop the unenforced claim."
+  echo "⚠️  Sandbox preflight: settings.json sets sandbox.enabled=true, but 'bwrap' (bubblewrap) is not installed — the sandbox cannot start, so Bash commands run with only the devcontainer as the isolation boundary. Install bubblewrap, or set sandbox.enabled=false to drop the unenforced claim.${firewallNote}"
   exit 0
 fi
 
 if ! bwrap --ro-bind / / true >/dev/null 2>&1; then
-  echo "⚠️  Sandbox preflight: settings.json sets sandbox.enabled=true and bubblewrap is installed, but it cannot create a user namespace here (common on Docker Desktop's LinuxKit kernel, which disables unprivileged user namespaces). The sandbox is NOT active — Bash commands run with only the devcontainer as the isolation boundary. Either enable unprivileged user namespaces for this container, or set sandbox.enabled=false so the config matches reality."
+  echo "⚠️  Sandbox preflight: settings.json sets sandbox.enabled=true and bubblewrap is installed, but it cannot create a user namespace here (common on Docker Desktop's LinuxKit kernel, which disables unprivileged user namespaces). The sandbox is NOT active — Bash commands run with only the devcontainer as the isolation boundary. Either enable unprivileged user namespaces for this container, or set sandbox.enabled=false so the config matches reality.${firewallNote}"
   exit 0
 fi
 

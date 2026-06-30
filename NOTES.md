@@ -21,6 +21,52 @@ entries short and high-signal. Newest at the top.
 
 ---
 
+## 2026-06-30 — M9 Option A shipped: opt-in network-egress firewall
+
+**Context** — Second M9 slice, after Option B (isolated-volume credentials). The
+bwrap sandbox is dormant on Docker Desktop's LinuxKit VM (no unprivileged user
+namespaces), leaving no enforced network boundary there. A container firewall
+fixes exactly that: `NET_ADMIN`/`iptables` work in the network namespace and need
+no user namespaces.
+
+**Decision** — Emit a default-deny egress allowlist behind `--network-firewall`
+(and a prompt), off by default. `generateInitFirewallScript()` →
+`.devcontainer/init-firewall.sh` (run by `postStartCommand` via sudo): default
+OUTPUT DROP, allow DNS/localhost/host-LAN/established, GitHub ranges (fetched
+from `api.github.com/meta`, covers the plugin marketplace), npm registry, and
+Anthropic endpoints; then a verify step that **fails closed** (exit 1 if a
+blocked host is reachable or an allowed host isn't). Made the `SessionStart`
+preflight firewall-aware so its dormant-bwrap warning doesn't imply "no network
+boundary." Registered `network-isolation` as a subsystem owning
+`src/templates/devcontainer.js`.
+
+**Security-review hardening (same day, before merge)** — a security-reviewer pass
+found the first cut was bypassable/fail-open. Fixed, and these supersede the
+initial leans: (1) **narrow node's sudo** to only the firewall script when the
+firewall is on — blanket `NOPASSWD:ALL` let a dependency postinstall (running as
+node) `sudo iptables -F` and defeat the allowlist (reverses the earlier
+"leave sudo blank" call); (2) **fail closed for real** via an EXIT trap that
+forces default-DROP on any early abort (the DROP policy is set last, so without
+the trap a failed fetch/DNS left OUTPUT at default ACCEPT); (3) **lock down
+IPv6** (ipset allowlist is IPv4-only, so AAAA egress was an open hole);
+(4) **scope DNS** to `/etc/resolv.conf` resolvers, not port-53-anywhere (DNS
+tunnel); (5) **firewall the first `npm install`** by running it in
+`postCreateCommand` ahead of the install, not only `postStartCommand`. Note: the
+firewall already constrained rogue _Claude_ commands regardless, since Claude is
+denied sudo via `Bash(sudo:*)`; the sudo-narrowing extends that to in-container
+dependency code.
+
+**Consequences** — Restores a real egress boundary on the most common host, and
+pairs with Option B against malicious-dependency exfiltration. Cost: allowlist
+maintenance — too tight breaks `npm install`/plugin-resolution, so it's opt-in
+with `ALLOWED_DOMAINS` surfaced for editing; and firewalled projects lose blanket
+dev sudo (re-add it knowing it also lets in-container code disable the firewall).
+Did NOT dogfood it on this repo's own devcontainer (would risk active sessions) —
+left as a follow-up, along with a possible `doctor` "firewall actually active"
+check. See [[sandbox-preflight-and-macos-vm]].
+
+---
+
 ## 2026-06-30 — Adopt both reference-devcontainer divergences, phased and gated
 
 **Context** — `docs/specs/network-isolation.md` captured two divergences from

@@ -152,3 +152,43 @@ cost; it is **not** a generated default, because it would silently de-harden
 every newcomer's project. On macOS the VM still backstops you; on native Linux
 this exposes your real kernel, so prefer enabling user namespaces over disabling
 seccomp there.
+
+## Opt-in: network-egress firewall (M9 Option A)
+
+Scaffolding with `--network-firewall` (or answering the prompt) adds a **third,
+optional boundary**: a default-deny egress allowlist enforced by `iptables`/
+`ipset` inside the container, built by `.devcontainer/init-firewall.sh` and run
+on every start (`postStartCommand`, via the `NET_ADMIN`/`NET_RAW` caps the
+devcontainer requests in `runArgs`).
+
+| Layer               | Isolates                             | Provided by                           |
+| ------------------- | ------------------------------------ | ------------------------------------- |
+| Devcontainer        | Claude Code from your host           | Docker / the container                |
+| bwrap sandbox       | each command's filesystem + network  | Claude Code's `sandbox` (bubblewrap)  |
+| **Egress firewall** | the **container's** outbound network | `iptables`/`ipset` allowlist (opt-in) |
+
+Why it's a meaningful addition and not a duplicate of the bwrap sandbox:
+
+- **It works where bwrap can't.** The firewall operates in the container's
+  _network_ namespace via `NET_ADMIN`, which needs **no unprivileged user
+  namespaces** — so it enforces even on Docker Desktop's LinuxKit VM, the exact
+  place the bwrap sandbox is dormant. This is the only layer that restores a
+  real network boundary there.
+- **It's coarse, not a replacement.** The allowlist is per-container and
+  evaluated once at start (CIDR-level); the bwrap sandbox is per-command and
+  host-aware. They're complementary — enabling the firewall does not let you
+  drop the sandbox config. When it's on, the `SessionStart` preflight appends a
+  note so its "bwrap dormant" message doesn't read as "no network boundary."
+- **It pairs with isolated credentials.** Against a malicious dependency
+  postinstall, isolated credentials (Option B) stop it reading host `~/.claude`
+  and the firewall stops it exfiltrating to an off-allowlist host.
+
+**The cost is allowlist maintenance.** The default allows DNS/localhost, the
+host/LAN, GitHub's published ranges (covers `github.com`, the API/CDN, and the
+plugin marketplace), the npm registry, and the Anthropic endpoints Claude Code
+needs. If your project pulls from other registries or CDNs, widen
+`ALLOWED_DOMAINS` in `init-firewall.sh` — too tight and `npm install` /
+plugin-resolution break. The script **fails closed**: a misbuilt allowlist makes
+its verification step exit non-zero at container start rather than letting an
+inert firewall look active. This is why it's opt-in, not a default. See
+`docs/specs/network-isolation.md`.

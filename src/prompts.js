@@ -111,6 +111,13 @@ const questions = [
   },
   {
     type: 'confirm',
+    name: 'networkFirewall',
+    message:
+      'Add a network-egress firewall to the devcontainer? (default-deny allowlist; enforces even where the sandbox is dormant, but you must widen the allowlist for extra registries/CDNs)',
+    default: false,
+  },
+  {
+    type: 'confirm',
     name: 'initGit',
     message: 'Initialize git?',
     default: true,
@@ -130,6 +137,7 @@ export function defaultAnswers(provided = {}) {
     useAnthropicApi: false,
     additionalKeys: [],
     isolatedCredentials: false,
+    networkFirewall: false,
     initGit: true,
     ...provided,
   };
