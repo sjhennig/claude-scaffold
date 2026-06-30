@@ -64,6 +64,21 @@ describe('generateDockerfile', () => {
     const dockerfile = generateDockerfile();
     expect(dockerfile).toContain('USER node');
   });
+
+  it('configures a node-owned global npm prefix', () => {
+    const dockerfile = generateDockerfile();
+    expect(dockerfile).toContain(
+      'NPM_CONFIG_PREFIX=/usr/local/share/npm-global',
+    );
+    expect(dockerfile).toContain('PATH=$PATH:/usr/local/share/npm-global/bin');
+  });
+
+  it('installs Claude Code as node (so auto-update can write the prefix)', () => {
+    const dockerfile = generateDockerfile();
+    expect(dockerfile.indexOf('USER node')).toBeLessThan(
+      dockerfile.indexOf('npm install -g @anthropic-ai/claude-code'),
+    );
+  });
 });
 
 describe('generateDevcontainerJson', () => {
@@ -171,5 +186,19 @@ describe('dogfood: repo Dockerfile shares the generated security invariants', ()
 
   it.each(dockerfiles)('%s drops to the non-root node user', (_, df) => {
     expect(df).toContain('USER node');
+  });
+
+  // The real bug this guards: a root-level `npm install -g` leaves Claude Code
+  // unwritable by the node user, so its auto-updater fails with "no write
+  // permission to npm prefix". Both images must give node a writable prefix AND
+  // install as node — assert the prefix is set and `USER node` precedes the install.
+  it.each(dockerfiles)('%s gives node a writable npm prefix', (_, df) => {
+    expect(df).toContain('NPM_CONFIG_PREFIX=/usr/local/share/npm-global');
+  });
+
+  it.each(dockerfiles)('%s installs Claude Code as node', (_, df) => {
+    expect(df.indexOf('USER node')).toBeLessThan(
+      df.indexOf('npm install -g @anthropic-ai/claude-code'),
+    );
   });
 });

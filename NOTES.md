@@ -21,6 +21,34 @@ entries short and high-signal. Newest at the top.
 
 ---
 
+## 2026-06-30 — Devcontainer installs Claude Code as node into a node-owned npm prefix
+
+**Context** — Every devcontainer this scaffold stands up hit "auto-update failed
+— no write permission to npm prefix" in the VS Code Claude Code extension. Both
+the generated Dockerfile (`generateDockerfile()`) and this repo's
+`.devcontainer/Dockerfile` ran `npm install -g @anthropic-ai/claude-code` as
+**root**, before `USER node`. The default prefix in `node:20-bookworm-slim` is
+the root-owned `/usr/local`, so the in-container auto-updater (running as the
+unprivileged `node` user) cannot write it.
+
+**Decision** — Adopt Anthropic's reference-devcontainer approach: create a
+node-owned global prefix (`NPM_CONFIG_PREFIX=/usr/local/share/npm-global`, on
+`PATH`) and move the install to **after** `USER node`. Applied identically to
+both Dockerfiles. Added a dogfood ordering invariant in `devcontainer.test.js`
+(`USER node` index < `npm install -g …` index, plus the prefix string) so the
+two can't silently diverge again. Added a `doctor` "npm global prefix" check
+(warn, not fail — the CLI still works, only self-update is blocked).
+
+**Consequences** — Auto-update works in-session; every new Dockerfile must keep
+the install after `USER node`. Deliberately did **not** adopt the reference's
+other divergences (network-egress firewall via `init-firewall.sh` +
+`NET_ADMIN`/`NET_RAW`; named-volume `~/.claude` instead of our documented host
+bind-mount) — the firewall overlaps the existing sandbox layer and is a separate
+architectural call (see [[sandbox-preflight-and-macos-vm]]); the bind-mount is a
+documented trade-off.
+
+---
+
 ## 2026-06-10 — Security audit: dispositions for the five findings
 
 **Context** — Full hands-on security pass before going public. No critical/high

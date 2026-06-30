@@ -168,6 +168,30 @@ export function evaluatePinnedTag(source, lsRemoteOutput) {
   };
 }
 
+// { prefix, writable }: the npm global prefix and whether the current user can
+// write where global packages land. A root-owned prefix is the classic
+// devcontainer trap — Claude Code's in-container auto-updater runs as the
+// unprivileged user and dies with "no write permission to npm prefix".
+export function evaluateNpmPrefix({ prefix, writable }) {
+  if (prefix === null) {
+    return {
+      status: 'warn',
+      detail:
+        'could not resolve the npm global prefix (npm not on PATH?) — cannot tell whether Claude Code can auto-update',
+    };
+  }
+  if (!writable) {
+    return {
+      status: 'warn',
+      detail: `npm global prefix ${prefix} is not writable by the current user — Claude Code's auto-update fails with "no write permission to npm prefix"; rebuild the devcontainer (its Dockerfile installs Claude Code into a node-owned prefix) or run "claude migrate-installer" to move to a user-local install`,
+    };
+  }
+  return {
+    status: 'pass',
+    detail: `npm global prefix ${prefix} is writable — Claude Code can auto-update`,
+  };
+}
+
 // sandboxEnabled: from settings; bwrapWorks: true/false/null (null = not Linux
 // or bwrap missing, i.e. nothing to probe).
 export function evaluateSandbox(sandboxEnabled, bwrapWorks) {
@@ -242,6 +266,25 @@ export function gatherHookStates(settings, root) {
   });
 }
 
+// Resolve the npm global prefix and test whether the current user can write
+// where global packages land (<prefix>/lib/node_modules). exec is injectable
+// for tests; accessSync is the I/O this gather* owns.
+export function gatherNpmPrefix(exec = tryExec) {
+  const out = exec('npm', ['prefix', '-g']);
+  if (out === null) return { prefix: null, writable: false };
+  const prefix = out.trim();
+  const modules = join(prefix, 'lib', 'node_modules');
+  const target = existsSync(modules) ? modules : prefix;
+  let writable = false;
+  try {
+    accessSync(target, constants.W_OK);
+    writable = true;
+  } catch {
+    writable = false;
+  }
+  return { prefix, writable };
+}
+
 export function runDoctor({ root = process.cwd(), exec = tryExec } = {}) {
   const settingsPath = join(root, '.claude', 'settings.json');
   const rawSettings = existsSync(settingsPath)
@@ -254,6 +297,7 @@ export function runDoctor({ root = process.cwd(), exec = tryExec } = {}) {
       name: 'Claude Code CLI',
       ...evaluateClaudeCli(exec('claude', ['--version'])),
     },
+    { name: 'npm global prefix', ...evaluateNpmPrefix(gatherNpmPrefix(exec)) },
     { name: 'Claude settings', ...evaluateSettings(rawSettings) },
   ];
 

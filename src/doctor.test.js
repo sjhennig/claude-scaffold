@@ -10,6 +10,7 @@ import {
   evaluateHooks,
   evaluatePluginEnablement,
   evaluatePinnedTag,
+  evaluateNpmPrefix,
   evaluateSandbox,
   gatherHookStates,
   runDoctor,
@@ -182,6 +183,29 @@ describe('evaluateSandbox', () => {
 
   it('passes when enabled and working', () => {
     expect(evaluateSandbox(true, true).status).toBe('pass');
+  });
+});
+
+describe('evaluateNpmPrefix', () => {
+  it('passes when the global prefix is writable', () => {
+    const f = evaluateNpmPrefix({
+      prefix: '/usr/local/share/npm-global',
+      writable: true,
+    });
+    expect(f.status).toBe('pass');
+    expect(f.detail).toContain('/usr/local/share/npm-global');
+  });
+
+  it('warns (with the real error string) when the prefix is not writable', () => {
+    const f = evaluateNpmPrefix({ prefix: '/usr/local', writable: false });
+    expect(f.status).toBe('warn');
+    expect(f.detail).toContain('no write permission to npm prefix');
+  });
+
+  it('warns when the prefix cannot be resolved', () => {
+    expect(evaluateNpmPrefix({ prefix: null, writable: false }).status).toBe(
+      'warn',
+    );
   });
 });
 

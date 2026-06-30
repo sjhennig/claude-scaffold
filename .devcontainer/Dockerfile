@@ -26,8 +26,15 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # container); see docs/sandbox.md § Trust model & residual risk.
 RUN echo "node ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers.d/node
 
-# Install Claude Code CLI globally
-RUN npm install -g @anthropic-ai/claude-code
+# Give the node user a writable global npm prefix. The default prefix in this
+# image is the root-owned /usr/local, so a root-level `npm install -g` leaves
+# Claude Code's files unwritable by the node user — and its in-container
+# auto-updater (which runs as node) then fails with "no write permission to npm
+# prefix". A node-owned prefix lets the first install and every self-update write.
+RUN mkdir -p /usr/local/share/npm-global \
+    && chown -R node:node /usr/local/share
+ENV NPM_CONFIG_PREFIX=/usr/local/share/npm-global
+ENV PATH=$PATH:/usr/local/share/npm-global/bin
 
 # Persist bash history
 RUN SNIPPET="export PROMPT_COMMAND='history -a' && export HISTFILE=/commandhistory/.bash_history" \
@@ -37,4 +44,9 @@ RUN SNIPPET="export PROMPT_COMMAND='history -a' && export HISTFILE=/commandhisto
     && echo "$SNIPPET" >> /home/node/.bashrc
 
 USER node
+
+# Install Claude Code CLI as node (into the node-owned prefix above) so it can
+# auto-update in place.
+RUN npm install -g @anthropic-ai/claude-code
+
 WORKDIR /workspaces/claude-scaffold
