@@ -37,6 +37,7 @@ describe('parseCliArgs', () => {
       '--anthropic-api',
       '--api-keys',
       'stripe key, github',
+      '--isolated-creds',
       '--no-git',
       '--yes',
     ]);
@@ -49,6 +50,7 @@ describe('parseCliArgs', () => {
       devPort: 8080,
       useAnthropicApi: true,
       additionalKeys: ['STRIPE_KEY', 'GITHUB'],
+      isolatedCredentials: true,
       initGit: false,
     });
   });

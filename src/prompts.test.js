@@ -136,6 +136,7 @@ describe('defaultAnswers (--yes semantics)', () => {
       devPort: DEFAULT_PORTS[DEFAULT_FRAMEWORK],
       useAnthropicApi: false,
       additionalKeys: [],
+      isolatedCredentials: false,
       initGit: true,
     });
   });

@@ -21,6 +21,35 @@ entries short and high-signal. Newest at the top.
 
 ---
 
+## 2026-06-30 — Adopt both reference-devcontainer divergences, phased and gated
+
+**Context** — `docs/specs/network-isolation.md` captured two divergences from
+Anthropic's reference devcontainer left open after the npm-prefix fix: a
+network-egress firewall (Option A) and named-volume credentials (Option B). They
+are independent in code but complementary against the same threat (a malicious
+dependency postinstall): A blocks exfiltration to off-allowlist hosts, B removes
+host `~/.claude` from the container's reach.
+
+**Decision** — Adopt **both**, as M9, phased by cost/risk rather than bundled:
+
+1. **Option B first** — a `host-bind` vs `isolated-volume` prompt/flag choice,
+   defaulting to the current bind-mount for continuity; isolated-volume
+   documented as the higher-security option. Cheap, low-risk, one mount slot.
+2. **Option A next** — emitted only behind an opt-in `--network-firewall` flag,
+   **never an unconditional default**: a too-tight egress allowlist breaks
+   `npm install` / plugin resolution on a fresh scaffold, which is worse for a
+   new builder than no firewall.
+
+**Consequences** — Neither becomes an always-on default, keeping the "safe by
+default, not brittle by default" line. Option A, when built, must fold into
+`docs/sandbox.md`'s layer model, reconcile the preflight "no boundary" message
+(a firewall is a real boundary), decide whether to narrow the `node` sudoers
+grant, and register its new owning files in `subsystem-map.json`. The allowlist
+must cover the npm registry, GitHub (incl. the plugin marketplace), and the
+Anthropic API. See [[sandbox-preflight-and-macos-vm]].
+
+---
+
 ## 2026-06-30 — Devcontainer installs Claude Code as node into a node-owned npm prefix
 
 **Context** — Every devcontainer this scaffold stands up hit "auto-update failed

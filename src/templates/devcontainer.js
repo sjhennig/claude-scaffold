@@ -81,12 +81,21 @@ export function generateDevcontainerJson(config) {
       },
     },
     mounts: [
-      // Share host Claude auth so you don't have to re-authenticate inside the
-      // container. NOTE: this exposes your host ~/.claude credentials (read-write)
-      // to anything running in the container, including dependency install
-      // scripts. Drop this mount and authenticate inside the container if you'd
-      // rather not share host credentials.
-      'source=${localEnv:HOME}/.claude,target=/home/node/.claude,type=bind',
+      // Claude credentials/config mount (M9 Option B; see
+      // docs/specs/network-isolation.md).
+      config.isolatedCredentials
+        ? // Isolated: a container-local named volume (keyed by devcontainerId)
+          // holds Claude's config + auth. The host ~/.claude is NEVER exposed, so
+          // a malicious dependency postinstall can't read or write your real
+          // credentials — at the cost of authenticating inside the container once
+          // per devcontainerId.
+          'source=claude-config-${devcontainerId},target=/home/node/.claude,type=volume'
+        : // Shared host auth (default): bind-mount host ~/.claude so you don't
+          // re-authenticate inside the container. NOTE: this exposes your host
+          // credentials (read-write) to anything in the container, including
+          // dependency install scripts. Scaffold with --isolated-creds (or pick
+          // the prompt) for the higher-security named-volume option above.
+          'source=${localEnv:HOME}/.claude,target=/home/node/.claude,type=bind',
       // Persist bash history across container rebuilds
       'source=claude-scaffold-bashhistory,target=/home/node/.bash_history_dir,type=volume',
     ],
