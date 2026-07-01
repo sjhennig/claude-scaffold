@@ -280,6 +280,20 @@ describe('generateInitFirewallScript', () => {
     expect(script).toContain('ipset destroy allowed-domains');
   });
 
+  it('treats a single unresolvable allowlist domain as warn-and-skip, not fatal', () => {
+    // A transiently-unresolvable (or IPv6-only/telemetry) domain must not fail
+    // the whole firewall closed and brick egress — the boot smoke caught this
+    // with statsig.anthropic.com. The per-domain miss warns and `continue`s;
+    // only the GitHub-meta fetch and the final verify are fatal.
+    const resolveBlock = script.slice(
+      script.indexOf('Resolve each allowed domain'),
+      script.indexOf('Default DROP'),
+    );
+    expect(resolveBlock).toContain('could not resolve');
+    expect(resolveBlock).toContain('continue');
+    expect(resolveBlock).not.toContain('exit 1');
+  });
+
   it('restores ACCEPT policies during setup so a re-run is not self-blocked', () => {
     // iptables -F clears rules but not chain policies; on a re-run (or the
     // postStart pass after postCreate) the policy is already DROP, which would

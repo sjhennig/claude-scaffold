@@ -77,6 +77,15 @@ Docker-host run. shellcheck is now a soft dependency of `lint:shell` (SKIPs
 without it). Full LinuxKit-VM dogfooding on this repo's own devcontainer remains a
 deferred follow-up.
 
+**Follow-up (same day)** — The first real `firewall-boot` run immediately paid
+off: `statsig.anthropic.com` returned no A record and the per-domain
+`could not resolve → exit 1` failed the _entire_ firewall closed, bricking all
+egress. Fixed the brittleness: a per-domain resolution miss is now a
+**warn-and-skip** (`continue`), not fatal — the firewall allowlists what resolves
+and denies the rest, and integrity is still guarded by the fatal GitHub-meta
+fetch + the final example.com/api.github.com verify. One flaky/optional/IPv6-only
+allowlist entry can no longer take down the container.
+
 ---
 
 ## 2026-06-30 — M9 Option A shipped: opt-in network-egress firewall

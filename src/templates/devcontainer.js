@@ -308,13 +308,20 @@ while read -r cidr; do
   ipset add allowed-domains "$cidr" 2>/dev/null || true
 done <<< "$gh_cidrs"
 
-# Resolve each allowed domain to its current A records and allow them.
+# Resolve each allowed domain to its current A records and allow them. A domain
+# that doesn't resolve is a WARNING, not fatal: one transiently-unresolvable (or
+# IPv6-only, or telemetry) entry must not fail the whole firewall closed and
+# brick every egress — the container would lose the VS Code session over a single
+# flaky optional host. We allowlist what resolves and deny the rest; egress to a
+# skipped domain simply gets the default-DROP (surfacing as a normal connection
+# error for that one service). Core integrity is still guarded by the GitHub-meta
+# fetch above (fatal) and the example.com/api.github.com verify below (fatal).
 for domain in "\${ALLOWED_DOMAINS[@]}"; do
   echo "init-firewall: resolving $domain..."
   ips="$(dig +short A "$domain" | grep -E '^[0-9]+\\.' || true)"
   if [ -z "$ips" ]; then
-    echo "init-firewall: ERROR — could not resolve $domain" >&2
-    exit 1
+    echo "init-firewall: WARNING — could not resolve $domain; skipping (egress to it will be denied)" >&2
+    continue
   fi
   while read -r ip; do
     [ -z "$ip" ] && continue
