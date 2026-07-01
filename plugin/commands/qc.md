@@ -24,5 +24,7 @@ Steps:
 
 Cost note: independent subagent review can cost several times the tokens of a
 single-thread turn. Run this at checkpoints — pre-commit or end of a feature —
-not on every turn. Route routine review to a cheaper model and reserve a
-stronger model for milestone review.
+not on every turn. `/qc`'s structured `spec-reviewer` is pinned to sonnet, while
+the deep `code-reviewer`/`security-reviewer` inherit the session model — so
+running `/qc` from a frontier-model session is what reserves that depth for
+milestone review.

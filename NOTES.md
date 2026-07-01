@@ -21,6 +21,73 @@ entries short and high-signal. Newest at the top.
 
 ---
 
+## 2026-07-01 — QC subagents: per-agent model, not uniform `inherit`
+
+**Context** — All four QC agents were `model: inherit` (enforced by
+`plugin.test.js` + a qc-agents invariant), with cost controlled only by the
+human's session model + running `/qc` at checkpoints. But `/qc` fans out its
+three reviewers on the _one_ session model, so a milestone review on a frontier
+model also burned it on the structured spec-reviewer — no per-agent floor. (The
+mechanical test-runner is invoked independently, not via `/qc`, but likewise
+never needs a frontier model.) Sonnet 5 is now capable enough for the lighter
+agents.
+
+**Decision** — Pin by cost/reasoning profile: `test-runner → haiku` (mechanical:
+run + filter), `spec-reviewer → sonnet` (structured requirement-matching); keep
+`code-reviewer` + `security-reviewer` on `inherit` so they ride the frontier
+model at milestones (a hard pin would override Opus exactly where depth/low
+false-negatives matter most). `plugin.test.js` now asserts the expected model
+per agent; qc-agents invariant + `/qc` cost note updated.
+
+**Consequences** — Cheaper/faster routine `/qc` without lowering the ceiling on
+the high-stakes reviewers. This is a plugin-content change: the dogfood source
+(unpinned working tree) picks it up immediately; generated projects won't until
+the next `guardrails-v*` release tag is cut (deliberate, not done here).
+
+---
+
+## 2026-07-01 — M9 Option A firewall: runtime hardening after review
+
+**Context** — Code review of the firewall branch found the generated
+`init-firewall.sh` was only substring-asserted in vitest, never executed. That
+blind spot hid two runtime bugs: (1) the reset ran `iptables -t nat -F`, which
+flushes Docker's embedded-DNS redirect (127.0.0.11:53 → resolver), so every
+`dig` fails and the script fails closed — the firewall would brick the container
+on standard Docker; (2) the host/LAN ACCEPT rule was installed _after_ the
+network-dependent GitHub-meta fetch, so a fetch abort tripped the fail-closed
+trap before host connectivity existed, severing the developer's VS Code session.
+
+**Decision** — (a) Stop flushing nat/mangle — the script only adds filter rules +
+an ipset, so `iptables -F` (filter-only) is the correct reset; added a comment so
+it isn't re-added. (b) Moved the host/LAN + loopback + DNS allows ahead of the
+network calls so they survive a fail-closed abort. (c) Added the verification the
+review said was missing: `npm run lint:shell` (shellcheck, in the `test` CI job)
+
+- `npm run test:firewall-boot` (a `workflow_dispatch`-gated job that builds a
+  firewalled image and runs the script under `NET_ADMIN`, asserting DNS survives
+  and the allowlist holds). Both SKIP where the tool/daemon is absent (mirrors the
+  `agent-smoke` gating idiom). (d) DNS staleness (CDN A-records pinned at start
+  rotate mid-session) → **documented only**, no refresh mechanism (out of M9
+  scope); remedy is re-running the script.
+
+**Consequences** — The boot smoke is the first thing that actually executes the
+emitted shell; it can't run in this devcontainer (no Docker) or on every PR
+(network-dependent), so runtime proof lands via the on-demand CI job or a manual
+Docker-host run. shellcheck is now a soft dependency of `lint:shell` (SKIPs
+without it). Full LinuxKit-VM dogfooding on this repo's own devcontainer remains a
+deferred follow-up.
+
+**Follow-up (same day)** — The first real `firewall-boot` run immediately paid
+off: `statsig.anthropic.com` returned no A record and the per-domain
+`could not resolve → exit 1` failed the _entire_ firewall closed, bricking all
+egress. Fixed the brittleness: a per-domain resolution miss is now a
+**warn-and-skip** (`continue`), not fatal — the firewall allowlists what resolves
+and denies the rest, and integrity is still guarded by the fatal GitHub-meta
+fetch + the final example.com/api.github.com verify. One flaky/optional/IPv6-only
+allowlist entry can no longer take down the container.
+
+---
+
 ## 2026-06-30 — M9 Option A shipped: opt-in network-egress firewall
 
 **Context** — Second M9 slice, after Option B (isolated-volume credentials). The

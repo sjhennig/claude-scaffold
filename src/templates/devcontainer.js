@@ -190,7 +190,10 @@ IFS=$'\\n\\t'
 
 # Fail closed: if anything below aborts (a failed GitHub fetch, a DNS miss, or
 # any other error under \`set -e\`), force a default-DROP so a setup failure leaves
-# the container with NO egress rather than wide open. The DROP policies are
+# the container with essentially NO egress rather than wide open. ("Closed" here
+# means the DROP policy plus whatever ACCEPT rules were already installed before
+# the abort — loopback, DNS to the resolver, and the host/LAN /24 — not an
+# absolute blackhole; those keep the dev session alive.) The DROP policies are
 # applied only at the very end on the happy path, so without this an early exit
 # would leave OUTPUT at its default ACCEPT. On success (exit 0) this is a no-op.
 firewall_fail_closed() {
@@ -210,18 +213,46 @@ trap firewall_fail_closed EXIT
 
 # Domains allowed out (besides the GitHub IP ranges fetched below). Add the
 # registries/CDNs your project needs here — too tight and installs break.
+#
+# NOTE: each domain is resolved to its A records ONCE, here at container start,
+# and those specific IPs are pinned into the ipset. For CDN-fronted hosts
+# (registry.npmjs.org, api.anthropic.com, sentry.io) the published IPs rotate on
+# short TTLs, so a long-running session can see later egress to an already
+# "allowlisted" domain get dropped once its IP changes. The remedy is to re-run
+# the script:  sudo /usr/local/bin/init-firewall.sh
 ALLOWED_DOMAINS=(
   registry.npmjs.org
   api.anthropic.com
   statsig.anthropic.com
-  sentry.io
+  sentry.io            # Claude Code error reporting
 )
 
 echo "init-firewall: resetting rules..."
 iptables -F
 iptables -X
-iptables -t nat -F 2>/dev/null || true
-iptables -t mangle -F 2>/dev/null || true
+# Restore default-ACCEPT policies for the setup phase. \`iptables -F\` clears the
+# RULES but NOT the chain policies, so on any run where the policy is already
+# DROP — a re-run inside a live container (the documented remedy for CDN IP
+# rotation) OR the postStartCommand pass that runs right after postCreateCommand
+# on first creation — this script's own DNS/GitHub setup traffic would be dropped
+# and it would fail closed on itself. Reset to ACCEPT here; the fail-closed trap
+# and the happy-path end both re-establish DROP. (Tradeoff: during an explicit
+# mid-session re-run egress is briefly open while the allowlist is rebuilt — the
+# pragmatic alternative to an atomic temp-chain swap.)
+iptables -P INPUT ACCEPT
+iptables -P OUTPUT ACCEPT
+iptables -P FORWARD ACCEPT
+if command -v ip6tables >/dev/null 2>&1; then
+  ip6tables -P INPUT ACCEPT 2>/dev/null || true
+  ip6tables -P OUTPUT ACCEPT 2>/dev/null || true
+  ip6tables -P FORWARD ACCEPT 2>/dev/null || true
+fi
+# Deliberately do NOT flush the nat/mangle tables. This script only ever adds
+# *filter*-table rules and an ipset, so there is nothing of ours to reset there
+# — and flushing nat would destroy Docker's embedded-DNS redirect (127.0.0.11:53
+# -> the resolver's ephemeral port), after which every \`dig\` below fails and the
+# whole script fails closed. \`iptables -F\` (no -t) touches only the filter table,
+# which is exactly what we want.
 ipset destroy allowed-domains 2>/dev/null || true
 
 # Loopback first (covers Docker's embedded DNS at 127.0.0.11).
@@ -242,6 +273,18 @@ if [ -n "$resolvers" ]; then
 else
   iptables -A OUTPUT -p udp --dport 53 -j ACCEPT
   iptables -A OUTPUT -p tcp --dport 53 -j ACCEPT
+fi
+
+# Allow the host/LAN (default-route subnet) so the VS Code server, port
+# forwarding, and devcontainer tooling keep working. Installed BEFORE the
+# network-dependent GitHub/allowlist steps below, so that if one of those aborts
+# the fail-closed trap won't also sever the developer's connection to the
+# container. /24 is a pragmatic assumption for the Docker bridge gateway subnet.
+host_ip="$(ip route show default | awk '/default/ {print $3; exit}')"
+if [ -n "\${host_ip:-}" ]; then
+  host_net="$(echo "$host_ip" | sed 's/\\.[0-9]*$/.0\\/24/')"
+  iptables -A INPUT -s "$host_net" -j ACCEPT
+  iptables -A OUTPUT -d "$host_net" -j ACCEPT
 fi
 
 ipset create allowed-domains hash:net
@@ -265,28 +308,26 @@ while read -r cidr; do
   ipset add allowed-domains "$cidr" 2>/dev/null || true
 done <<< "$gh_cidrs"
 
-# Resolve each allowed domain to its current A records and allow them.
+# Resolve each allowed domain to its current A records and allow them. A domain
+# that doesn't resolve is a WARNING, not fatal: one transiently-unresolvable (or
+# IPv6-only, or telemetry) entry must not fail the whole firewall closed and
+# brick every egress — the container would lose the VS Code session over a single
+# flaky optional host. We allowlist what resolves and deny the rest; egress to a
+# skipped domain simply gets the default-DROP (surfacing as a normal connection
+# error for that one service). Core integrity is still guarded by the GitHub-meta
+# fetch above (fatal) and the example.com/api.github.com verify below (fatal).
 for domain in "\${ALLOWED_DOMAINS[@]}"; do
   echo "init-firewall: resolving $domain..."
   ips="$(dig +short A "$domain" | grep -E '^[0-9]+\\.' || true)"
   if [ -z "$ips" ]; then
-    echo "init-firewall: ERROR — could not resolve $domain" >&2
-    exit 1
+    echo "init-firewall: WARNING — could not resolve $domain; skipping (egress to it will be denied)" >&2
+    continue
   fi
   while read -r ip; do
     [ -z "$ip" ] && continue
     ipset add allowed-domains "$ip" 2>/dev/null || true
   done <<< "$ips"
 done
-
-# Allow the host/LAN (default-route subnet) so the VS Code server, port
-# forwarding, and devcontainer tooling keep working.
-host_ip="$(ip route show default | awk '/default/ {print $3; exit}')"
-if [ -n "\${host_ip:-}" ]; then
-  host_net="$(echo "$host_ip" | sed 's/\\.[0-9]*$/.0\\/24/')"
-  iptables -A INPUT -s "$host_net" -j ACCEPT
-  iptables -A OUTPUT -d "$host_net" -j ACCEPT
-fi
 
 # Default DROP, then allow established/related and the allowlist set.
 iptables -P INPUT DROP

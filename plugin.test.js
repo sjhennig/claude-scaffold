@@ -70,8 +70,18 @@ describe('subagent frontmatter', () => {
         expect(desc.toLowerCase()).toContain('use proactively');
       });
 
-      it('pins the model to inherit', () => {
-        expect(fm).toContain('model: inherit');
+      it('declares the model chosen for its cost/reasoning profile', () => {
+        // Mechanical/structured agents are pinned to cheaper models so a
+        // milestone /qc on a frontier session doesn't burn it on low-reasoning
+        // work; the deep reviewers inherit so they ride the strong model at
+        // milestones. See docs/specs/qc-agents.md.
+        const EXPECTED_MODEL = {
+          'code-reviewer': 'inherit',
+          'security-reviewer': 'inherit',
+          'spec-reviewer': 'sonnet',
+          'test-runner': 'haiku',
+        };
+        expect(fm).toContain(`model: ${EXPECTED_MODEL[name]}`);
       });
 
       it('has a non-empty system prompt body', () => {
