@@ -46,6 +46,13 @@ jobs:
       - name: Run tests
         run: npm test
 
+      # Lint the generated shell (init-firewall.sh) with shellcheck, which
+      # ubuntu runners ship preinstalled. Catches quoting/word-splitting bugs the
+      # substring assertions in vitest can't. SKIPs cleanly where shellcheck is
+      # absent (e.g. a dev box), so it's never a false red locally.
+      - name: Lint generated shell
+        run: npm run lint:shell
+
   # Self-verification boot test (design brief §7.2): generate each template and
   # prove it actually installs + verifies. One leg per template so they run in
   # parallel and a failure points at the exact template. Separate from `test`
@@ -147,3 +154,34 @@ jobs:
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
         run: npm run test:agent-smoke
+
+  # Opt-in network-firewall boot smoke (M9 Option A): actually builds a
+  # firewalled image and runs init-firewall.sh under NET_ADMIN, proving the
+  # reset preserves Docker's embedded DNS and the default-DROP allowlist holds —
+  # runtime behavior the vitest substring checks can't reach. Manual-only
+  # (workflow_dispatch): it's network-dependent (apt-get, api.github.com/meta,
+  # npm, example.com), so gating keeps that flakiness off every PR. ubuntu
+  # runners ship Docker and allow --cap-add; where docker is absent the script
+  # SKIPs (exit 0).
+  firewall-boot:
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Firewall boot smoke
+        run: npm run test:firewall-boot

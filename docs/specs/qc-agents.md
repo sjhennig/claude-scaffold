@@ -73,8 +73,17 @@ uses a local `directory` source):
   `tools` frontmatter. Tool allowlists stay narrow (`Read, Grep, Glob, Bash`).
 - **One job each**, a precise `description` containing "use proactively", and a
   **structured return shape** so the main thread can act on the summary alone.
-- `model: inherit` on every agent; the cost note in `/qc` (and CLAUDE.md) steers
-  heavy use to checkpoints, not every turn.
+- **Model is chosen per agent by cost/reasoning profile**, not uniform. `/qc`
+  fans out only the three reviewers (`code-reviewer`, `spec-reviewer`,
+  `security-reviewer`); `test-runner` is invoked independently (proactively,
+  to run the suite), never via `/qc`. The two deep reviewers (`code-reviewer`,
+  `security-reviewer`) use `model: inherit` so they ride the session's frontier
+  model at milestone reviews; the structured `spec-reviewer` is pinned to
+  `sonnet` so a `/qc` on a frontier session doesn't burn it on the lighter
+  reviewer, and the mechanical `test-runner` is pinned to `haiku` because it
+  never needs frontier reasoning regardless of how it's invoked.
+  `plugin.test.js` asserts each agent's expected model. The `/qc` cost note
+  still steers heavy use to checkpoints, not every turn.
 - **No `hooks`/`mcpServers`/`permissionMode` frontmatter** — these are _ignored_
   for plugin-loaded agents, so that behavior must live in `.claude/settings.json`
   (the [[guardrails]] layer), never in the plugin.

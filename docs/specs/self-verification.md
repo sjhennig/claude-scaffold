@@ -49,10 +49,13 @@ or what the guardrails are (that's [[guardrails]]) — only for proving they wor
   the always-on stand-in for the opt-in runtime smoke test.
 - `src/index.test.js` — generation test: file existence + content invariants.
 - `.github/workflows/ci.yml` — the `test` job (generation + guardrail-fires +
-  loadability via `npm test`), the `boot` job (one matrix leg per template),
-  the `pack` job (M8: `npm run test:pack` proves the npm tarball is
-  self-contained — owned by [[distribution]]), and the opt-in `agent-smoke`
-  job (`workflow_dispatch` only).
+  loadability via `npm test`, plus the `npm run lint:shell` shellcheck step),
+  the `boot` job (one matrix leg per template), the `pack` job (M8:
+  `npm run test:pack` proves the npm tarball is self-contained — owned by
+  [[distribution]]), the opt-in `agent-smoke` job (`workflow_dispatch` only),
+  and the opt-in `firewall-boot` job (`workflow_dispatch` only; `lint:shell` +
+  `firewall-boot-test.mjs` verify the emitted firewall script — owned by
+  [[network-isolation]]).
 
 It depends on the `generateProject(config, root)` contract in `src/index.js`
 (the prompt-free generation entry point the harness drives).
