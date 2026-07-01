@@ -85,6 +85,17 @@ uses a local `directory` source):
   (`claude-guardrails@claude-scaffold`) must split into a marketplace name
   present in `extraKnownMarketplaces` and a plugin name equal to the marketplace
   entry's name and the manifest's `name`. `plugin.test.js` asserts this.
+- **Enablement is necessary but no longer sufficient (Claude Code v2.1.195+):** a
+  plugin enabled only via a project's `.claude/settings.json` from an external
+  source (GitHub — what generated projects use — and empirically `directory`)
+  **does not auto-load**; the user must install it (trust-time prompt, or
+  `claude plugin install claude-guardrails@claude-scaffold`), and plugin agents
+  are referenced by their **scoped** name (`claude-guardrails:code-reviewer`).
+  So generated projects document this one-time step (README + CLAUDE.md), and
+  `scripts/agent-smoke.mjs` installs the plugin + uses the scoped name before
+  invoking. See [[cli-plugin-install-required]] and
+  https://code.claude.com/docs/en/discover-plugins.md. (The dogfood below still
+  loads because this repo's folder is already trusted/installed.)
 
 ## Dogfooding
 

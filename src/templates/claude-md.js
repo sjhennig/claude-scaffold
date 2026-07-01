@@ -90,6 +90,14 @@ Read-only QC subagents ship via the \`claude-guardrails\` plugin (enabled in
 feature — to review the current diff. Subagent review costs several times the
 tokens of a normal turn, so use it at checkpoints, not every turn.
 
+> **One-time install (Claude Code v2.1.195+):** enabling the plugin in
+> \`.claude/settings.json\` no longer auto-loads it — Claude Code now installs
+> plugins from an external marketplace explicitly. When you open this project and
+> trust the folder, accept the prompt to install \`claude-guardrails\`, or run
+> \`claude plugin install claude-guardrails@claude-scaffold\` once. Until then
+> \`/qc\` and the reviewers won't appear. Invoke a reviewer by its scoped name,
+> e.g. \`--agent claude-guardrails:code-reviewer\`.
+
 ## Git Workflow
 
 - Feature branches off \`main\`

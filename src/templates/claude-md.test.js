@@ -45,6 +45,14 @@ describe('generateClaudeMd', () => {
     expect(output).toMatch(/When compacting[\s\S]*NOTES\.md/);
   });
 
+  it('documents the one-time plugin install step (Claude Code v2.1.195+)', () => {
+    // Enabling the plugin in settings.json no longer auto-loads it; the QC
+    // reviewers are absent until installed. The generated CLAUDE.md must say so.
+    const output = generateClaudeMd(baseConfig);
+    expect(output).toContain('claude plugin install claude-guardrails@');
+    expect(output).toContain('claude-guardrails:code-reviewer');
+  });
+
   describe('framework commands', () => {
     it.each(['react-vite-ts', 'nextjs-ts', 'node-ts'])(
       'contains the command table for %s',

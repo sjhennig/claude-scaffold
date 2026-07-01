@@ -832,6 +832,7 @@ This project is set up for AI-first development with Claude Code:
 - **\`docs/\`** — Detailed context documents Claude reads as needed
 - **\`docs/specs/\`** — Feature specs written before implementation
 - **\`.claude/settings.json\`** — Sensible default permissions, sandbox, and hooks. Safe operations (file edits, local git, running tests) are auto-approved. Destructive or external-facing actions (rm, git push, npm install) still require manual approval. Hooks auto-format edited files, flag obviously destructive shell commands (a best-effort accident guard, not an adversarial control), and run \`npm run verify\` when Claude finishes a task — **blocking turn-end until it passes**.
+- **QC reviewers (\`/qc\`)** — ship via the \`claude-guardrails\` plugin, enabled in \`.claude/settings.json\`. On Claude Code **v2.1.195+** an enabled plugin from an external marketplace no longer auto-loads: accept the install prompt when you trust the folder, or run \`claude plugin install claude-guardrails@claude-scaffold\` once. Until then \`/qc\` and the reviewers won't appear.
 
 ## Running in Auto Mode
 
