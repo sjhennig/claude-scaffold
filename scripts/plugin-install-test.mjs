@@ -24,7 +24,11 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { generateProject } from '../src/index.js';
-import { PLUGIN_ID, PLUGIN_NAME } from '../src/templates/guardrails.js';
+import {
+  PLUGIN_ID,
+  PLUGIN_NAME,
+  MARKETPLACE_NAME,
+} from '../src/templates/guardrails.js';
 
 function skip(reason) {
   console.log(`SKIP: ${reason}`);
@@ -61,6 +65,18 @@ try {
 
   const claude = (...args) =>
     spawnSync('claude', args, { cwd: root, encoding: 'utf-8' });
+
+  // settings.json makes the marketplace known but doesn't fetch its catalog, so
+  // a bare `plugin install` reports "not found in marketplace" — fetch it first.
+  console.log(`Fetching marketplace ${MARKETPLACE_NAME} ...`);
+  const update = claude('plugin', 'marketplace', 'update', MARKETPLACE_NAME);
+  process.stdout.write(update.stdout || '');
+  process.stderr.write(update.stderr || '');
+  if (update.status !== 0) {
+    throw new Error(
+      `\`claude plugin marketplace update ${MARKETPLACE_NAME}\` failed (exit ${update.status}).`,
+    );
+  }
 
   console.log(`Installing ${PLUGIN_ID} from the project's settings.json ...`);
   const install = claude('plugin', 'install', PLUGIN_ID);

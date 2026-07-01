@@ -146,18 +146,25 @@ describe('generateDevcontainerJson', () => {
   });
 
   it('installs deps then auto-installs the guardrails plugin in postCreate', () => {
-    const result = JSON.parse(generateDevcontainerJson(baseConfig));
-    // npm install first, then the plugin install (v2.1.195+ needs an explicit
-    // install; settings.json enablement no longer auto-loads it).
-    expect(result.postCreateCommand).toContain('npm install');
-    expect(result.postCreateCommand).toContain(
+    const cmd = JSON.parse(
+      generateDevcontainerJson(baseConfig),
+    ).postCreateCommand;
+    // npm install → marketplace update (settings.json makes the marketplace
+    // known but doesn't fetch its catalog) → plugin install (v2.1.195+ needs an
+    // explicit install; settings.json enablement no longer auto-loads it).
+    expect(cmd).toContain('npm install');
+    expect(cmd).toContain('claude plugin marketplace update claude-scaffold');
+    expect(cmd).toContain(
       'claude plugin install claude-guardrails@claude-scaffold',
     );
-    expect(result.postCreateCommand.indexOf('npm install')).toBeLessThan(
-      result.postCreateCommand.indexOf('claude plugin install'),
+    expect(cmd.indexOf('npm install')).toBeLessThan(
+      cmd.indexOf('claude plugin marketplace update'),
+    );
+    expect(cmd.indexOf('claude plugin marketplace update')).toBeLessThan(
+      cmd.indexOf('claude plugin install'),
     );
     // Non-fatal: a failed plugin install must not fail postCreate.
-    expect(result.postCreateCommand).toContain('|| echo');
+    expect(cmd).toContain('|| echo');
   });
 
   it('installs the GitHub CLI via a devcontainer feature', () => {
