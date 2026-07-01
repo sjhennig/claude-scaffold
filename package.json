@@ -33,6 +33,7 @@
     "test:agent-smoke": "node scripts/agent-smoke.mjs",
     "test:pack": "node scripts/pack-test.mjs",
     "test:firewall-boot": "node scripts/firewall-boot-test.mjs",
+    "test:plugin-install": "node scripts/plugin-install-test.mjs",
     "lint": "eslint .",
     "lint:fix": "eslint --fix .",
     "lint:shell": "node scripts/lint-shell.mjs",

@@ -21,6 +21,40 @@ entries short and high-signal. Newest at the top.
 
 ---
 
+## 2026-07-01 — Devcontainer auto-installs the guardrails plugin
+
+**Context** — Follow-up to the v2.1.195 plugin-load regression: documenting the
+manual `claude plugin install` (previous entry) was only a stopgap — scaffolded
+projects' `/qc` + reviewers still didn't work out of the box. The devcontainer is
+the scaffold's primary path, so it should restore "just works" there.
+
+**Decision** — `generateDevcontainerJson` now appends `claude plugin install
+claude-guardrails@claude-scaffold` to `postCreateCommand` (after `npm install`,
+and after `init-firewall.sh` when the firewall is on — GitHub egress is
+allowlisted). It is **non-fatal** (`|| echo …`): a network/trust hiccup must not
+fail postCreate and brick the container; the README documents the manual install
+as the fallback for non-devcontainer users. Added `scripts/plugin-install-test.mjs`
+
+- a `workflow_dispatch`-gated `plugin-install` CI job that proves the install
+  works headlessly against a generated project's **GitHub-source** settings.json
+  (no explicit `marketplace add`) — the exact mechanism postCreate relies on, which
+  `agent-smoke` (directory source) doesn't cover.
+
+**Consequences** — Devcontainer users get `/qc` back automatically; non-container
+users still do the one-time install (documented). Runtime proof needs a
+`workflow_dispatch` run (no API key required, but needs the CLI + GitHub).
+
+**Answered by the CI job (two red runs):** a project's settings.json enablement
+is NOT honored headlessly — `claude plugin marketplace update` reported
+"Marketplace 'claude-scaffold' not found. Available marketplaces: <none>", i.e.
+`extraKnownMarketplaces` only loads on an interactive folder-trust. So postCreate
+must **explicitly `claude plugin marketplace add <github-url>#<tag>`** (pinned to
+`PINNED_PLUGIN_REF`, built from the same constants as settings.json so it can't
+drift) **before `claude plugin install`**. This is the confirmed mechanism; the
+`plugin-install` CI job guards it. See [[cli-plugin-install-required]].
+
+---
+
 ## 2026-07-01 — Claude Code v2.1.195 broke plugin auto-load; document + fix smoke
 
 **Context** — A `workflow_dispatch` run of the opt-in `agent-smoke` job failed:

@@ -2,6 +2,19 @@
  * Generates .devcontainer/Dockerfile and .devcontainer/devcontainer.json
  */
 
+import {
+  PLUGIN_ID,
+  GITHUB_MARKETPLACE_SOURCE,
+  PINNED_PLUGIN_REF,
+} from './guardrails.js';
+
+// The marketplace source as a `claude plugin marketplace add` argument: a
+// GitHub git URL pinned to the same release tag the emitted settings.json uses
+// (built from the same constants, so it can't drift). A project's settings.json
+// enablement alone does NOT load the plugin headlessly (that path needs an
+// interactive folder-trust), so the devcontainer adds + installs it explicitly.
+const MARKETPLACE_ADD_ARG = `https://github.com/${GITHUB_MARKETPLACE_SOURCE.repo}.git#${PINNED_PLUGIN_REF}`;
+
 export function generateDockerfile(config = {}) {
   // Opt-in network-egress firewall (M9 Option A; docs/specs/network-isolation.md):
   // extra packages for the iptables/ipset allowlist, plus the script copied into
@@ -154,9 +167,24 @@ export function generateDevcontainerJson(config) {
     features: {
       'ghcr.io/devcontainers/features/github-cli:1': {},
     },
-    postCreateCommand: config.networkFirewall
-      ? 'sudo /usr/local/bin/init-firewall.sh && npm install'
-      : 'npm install',
+    // Ordered postCreate: (firewall up first, if enabled) → install deps → add
+    // the marketplace + install the guardrails plugin. As of Claude Code
+    // v2.1.195 a plugin merely *enabled* in settings.json from an external
+    // marketplace no longer auto-loads — and headlessly that enablement isn't
+    // even honored without an interactive folder-trust — so we add the
+    // marketplace explicitly (pinned to the same tag) and install, keeping the
+    // devcontainer's /qc + QC reviewers working with no manual step. The
+    // `marketplace add` is `|| true` (harmless if already added on a rebuild);
+    // the whole step is NON-FATAL (`|| echo …`): a transient network/trust hiccup
+    // must not fail postCreate and brick the container. README documents the
+    // manual fallback.
+    postCreateCommand: [
+      config.networkFirewall ? 'sudo /usr/local/bin/init-firewall.sh' : null,
+      'npm install',
+      `(claude plugin marketplace add ${MARKETPLACE_ADD_ARG} || true; claude plugin install ${PLUGIN_ID}) || echo 'guardrails plugin auto-install failed — see README for the manual claude plugin install step'`,
+    ]
+      .filter(Boolean)
+      .join(' && '),
     remoteUser: 'node',
   };
 

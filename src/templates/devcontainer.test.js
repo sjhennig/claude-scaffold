@@ -145,9 +145,28 @@ describe('generateDevcontainerJson', () => {
     expect(historyMount).toContain('type=volume');
   });
 
-  it('has postCreateCommand set to npm install', () => {
-    const result = JSON.parse(generateDevcontainerJson(baseConfig));
-    expect(result.postCreateCommand).toBe('npm install');
+  it('installs deps then auto-installs the guardrails plugin in postCreate', () => {
+    const cmd = JSON.parse(
+      generateDevcontainerJson(baseConfig),
+    ).postCreateCommand;
+    // npm install → marketplace add (settings.json enablement isn't honored
+    // headlessly without folder-trust) → plugin install (v2.1.195+ needs an
+    // explicit install). The marketplace add is pinned to the release tag.
+    expect(cmd).toContain('npm install');
+    expect(cmd).toContain(
+      'claude plugin marketplace add https://github.com/sjhennig/claude-scaffold.git#guardrails-v',
+    );
+    expect(cmd).toContain(
+      'claude plugin install claude-guardrails@claude-scaffold',
+    );
+    expect(cmd.indexOf('npm install')).toBeLessThan(
+      cmd.indexOf('claude plugin marketplace add'),
+    );
+    expect(cmd.indexOf('claude plugin marketplace add')).toBeLessThan(
+      cmd.indexOf('claude plugin install'),
+    );
+    // Non-fatal: a failed plugin install must not fail postCreate.
+    expect(cmd).toContain('|| echo');
   });
 
   it('installs the GitHub CLI via a devcontainer feature', () => {
@@ -213,13 +232,17 @@ describe('network-egress firewall (opt-in, M9 Option A)', () => {
       generateDevcontainerJson(withConfig({ networkFirewall: true })),
     );
     // The prime spot for a malicious postinstall is the first dependency
-    // install, so the firewall must run ahead of it in postCreateCommand.
-    expect(dc.postCreateCommand).toBe(
-      'sudo /usr/local/bin/init-firewall.sh && npm install',
-    );
+    // install, so the firewall must run ahead of it in postCreateCommand — and
+    // ahead of the plugin install too, which needs GitHub egress (allowlisted).
     const cmd = dc.postCreateCommand;
+    expect(cmd.startsWith('sudo /usr/local/bin/init-firewall.sh && ')).toBe(
+      true,
+    );
     expect(cmd.indexOf('init-firewall.sh')).toBeLessThan(
       cmd.indexOf('npm install'),
+    );
+    expect(cmd.indexOf('npm install')).toBeLessThan(
+      cmd.indexOf('claude plugin install'),
     );
   });
 });

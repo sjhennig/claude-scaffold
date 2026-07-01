@@ -53,9 +53,13 @@ or what the guardrails are (that's [[guardrails]]) — only for proving they wor
   the `boot` job (one matrix leg per template), the `pack` job (M8:
   `npm run test:pack` proves the npm tarball is self-contained — owned by
   [[distribution]]), the opt-in `agent-smoke` job (`workflow_dispatch` only),
-  and the opt-in `firewall-boot` job (`workflow_dispatch` only; `lint:shell` +
+  the opt-in `firewall-boot` job (`workflow_dispatch` only; `lint:shell` +
   `firewall-boot-test.mjs` verify the emitted firewall script — owned by
-  [[network-isolation]]).
+  [[network-isolation]]), and the opt-in `plugin-install` job
+  (`workflow_dispatch` only; `plugin-install-test.mjs` proves the devcontainer
+  `postCreate` `claude plugin install` actually installs the plugin from a
+  generated project's GitHub-source settings — the v2.1.195 loading requirement,
+  see [[qc-agents]]).
 
 It depends on the `generateProject(config, root)` contract in `src/index.js`
 (the prompt-free generation entry point the harness drives).
