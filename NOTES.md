@@ -42,11 +42,16 @@ as the fallback for non-devcontainer users. Added `scripts/plugin-install-test.m
 
 **Consequences** — Devcontainer users get `/qc` back automatically; non-container
 users still do the one-time install (documented). Runtime proof needs a
-`workflow_dispatch` run (no API key required, but needs the CLI + GitHub). Open
-question the CI job answers: whether `claude plugin install X@Y` resolves the
-marketplace purely from project settings.json, or needs a prior `marketplace
-add` — if the latter, postCreate must add that step. See
-[[cli-plugin-install-required]].
+`workflow_dispatch` run (no API key required, but needs the CLI + GitHub).
+
+**Answered by the CI job (two red runs):** a project's settings.json enablement
+is NOT honored headlessly — `claude plugin marketplace update` reported
+"Marketplace 'claude-scaffold' not found. Available marketplaces: <none>", i.e.
+`extraKnownMarketplaces` only loads on an interactive folder-trust. So postCreate
+must **explicitly `claude plugin marketplace add <github-url>#<tag>`** (pinned to
+`PINNED_PLUGIN_REF`, built from the same constants as settings.json so it can't
+drift) **before `claude plugin install`**. This is the confirmed mechanism; the
+`plugin-install` CI job guards it. See [[cli-plugin-install-required]].
 
 ---
 

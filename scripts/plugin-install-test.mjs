@@ -27,8 +27,14 @@ import { generateProject } from '../src/index.js';
 import {
   PLUGIN_ID,
   PLUGIN_NAME,
-  MARKETPLACE_NAME,
+  GITHUB_MARKETPLACE_SOURCE,
+  PINNED_PLUGIN_REF,
 } from '../src/templates/guardrails.js';
+
+// Same marketplace-add argument the devcontainer postCreate uses: the GitHub git
+// URL pinned to the release tag. A project's settings.json enablement is NOT
+// honored headlessly (needs interactive folder-trust), so add it explicitly.
+const MARKETPLACE_ADD_ARG = `https://github.com/${GITHUB_MARKETPLACE_SOURCE.repo}.git#${PINNED_PLUGIN_REF}`;
 
 function skip(reason) {
   console.log(`SKIP: ${reason}`);
@@ -66,19 +72,20 @@ try {
   const claude = (...args) =>
     spawnSync('claude', args, { cwd: root, encoding: 'utf-8' });
 
-  // settings.json makes the marketplace known but doesn't fetch its catalog, so
-  // a bare `plugin install` reports "not found in marketplace" — fetch it first.
-  console.log(`Fetching marketplace ${MARKETPLACE_NAME} ...`);
-  const update = claude('plugin', 'marketplace', 'update', MARKETPLACE_NAME);
-  process.stdout.write(update.stdout || '');
-  process.stderr.write(update.stderr || '');
-  if (update.status !== 0) {
+  // settings.json enablement isn't honored headlessly (needs interactive
+  // folder-trust), so add the marketplace explicitly — pinned to the release
+  // tag — exactly as the devcontainer postCreate does.
+  console.log(`Adding marketplace ${MARKETPLACE_ADD_ARG} ...`);
+  const add = claude('plugin', 'marketplace', 'add', MARKETPLACE_ADD_ARG);
+  process.stdout.write(add.stdout || '');
+  process.stderr.write(add.stderr || '');
+  if (add.status !== 0) {
     throw new Error(
-      `\`claude plugin marketplace update ${MARKETPLACE_NAME}\` failed (exit ${update.status}).`,
+      `\`claude plugin marketplace add ${MARKETPLACE_ADD_ARG}\` failed (exit ${add.status}).`,
     );
   }
 
-  console.log(`Installing ${PLUGIN_ID} from the project's settings.json ...`);
+  console.log(`Installing ${PLUGIN_ID} ...`);
   const install = claude('plugin', 'install', PLUGIN_ID);
   process.stdout.write(install.stdout || '');
   process.stderr.write(install.stderr || '');

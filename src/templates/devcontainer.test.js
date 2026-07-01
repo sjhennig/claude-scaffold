@@ -149,18 +149,20 @@ describe('generateDevcontainerJson', () => {
     const cmd = JSON.parse(
       generateDevcontainerJson(baseConfig),
     ).postCreateCommand;
-    // npm install → marketplace update (settings.json makes the marketplace
-    // known but doesn't fetch its catalog) → plugin install (v2.1.195+ needs an
-    // explicit install; settings.json enablement no longer auto-loads it).
+    // npm install → marketplace add (settings.json enablement isn't honored
+    // headlessly without folder-trust) → plugin install (v2.1.195+ needs an
+    // explicit install). The marketplace add is pinned to the release tag.
     expect(cmd).toContain('npm install');
-    expect(cmd).toContain('claude plugin marketplace update claude-scaffold');
+    expect(cmd).toContain(
+      'claude plugin marketplace add https://github.com/sjhennig/claude-scaffold.git#guardrails-v',
+    );
     expect(cmd).toContain(
       'claude plugin install claude-guardrails@claude-scaffold',
     );
     expect(cmd.indexOf('npm install')).toBeLessThan(
-      cmd.indexOf('claude plugin marketplace update'),
+      cmd.indexOf('claude plugin marketplace add'),
     );
-    expect(cmd.indexOf('claude plugin marketplace update')).toBeLessThan(
+    expect(cmd.indexOf('claude plugin marketplace add')).toBeLessThan(
       cmd.indexOf('claude plugin install'),
     );
     // Non-fatal: a failed plugin install must not fail postCreate.
