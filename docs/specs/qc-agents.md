@@ -97,10 +97,14 @@ uses a local `directory` source):
 - **Enablement is necessary but no longer sufficient (Claude Code v2.1.195+):** a
   plugin enabled only via a project's `.claude/settings.json` from an external
   source (GitHub — what generated projects use — and empirically `directory`)
-  **does not auto-load**; the user must install it (trust-time prompt, or
+  **does not auto-load**; it must be installed (trust-time prompt, or
   `claude plugin install claude-guardrails@claude-scaffold`), and plugin agents
   are referenced by their **scoped** name (`claude-guardrails:code-reviewer`).
-  So generated projects document this one-time step (README + CLAUDE.md), and
+  So: the **devcontainer installs it automatically** (a non-fatal `claude plugin
+install` in `postCreate`, owned by [[network-isolation]]); generated projects
+  document the manual step for non-devcontainer users (README + CLAUDE.md); the
+  `plugin-install` CI job (`plugin-install-test.mjs`) proves that install works
+  headlessly against a generated project's GitHub-source settings; and
   `scripts/agent-smoke.mjs` installs the plugin + uses the scoped name before
   invoking. See [[cli-plugin-install-required]] and
   https://code.claude.com/docs/en/discover-plugins.md. (The dogfood below still

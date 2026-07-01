@@ -145,9 +145,19 @@ describe('generateDevcontainerJson', () => {
     expect(historyMount).toContain('type=volume');
   });
 
-  it('has postCreateCommand set to npm install', () => {
+  it('installs deps then auto-installs the guardrails plugin in postCreate', () => {
     const result = JSON.parse(generateDevcontainerJson(baseConfig));
-    expect(result.postCreateCommand).toBe('npm install');
+    // npm install first, then the plugin install (v2.1.195+ needs an explicit
+    // install; settings.json enablement no longer auto-loads it).
+    expect(result.postCreateCommand).toContain('npm install');
+    expect(result.postCreateCommand).toContain(
+      'claude plugin install claude-guardrails@claude-scaffold',
+    );
+    expect(result.postCreateCommand.indexOf('npm install')).toBeLessThan(
+      result.postCreateCommand.indexOf('claude plugin install'),
+    );
+    // Non-fatal: a failed plugin install must not fail postCreate.
+    expect(result.postCreateCommand).toContain('|| echo');
   });
 
   it('installs the GitHub CLI via a devcontainer feature', () => {
@@ -213,13 +223,17 @@ describe('network-egress firewall (opt-in, M9 Option A)', () => {
       generateDevcontainerJson(withConfig({ networkFirewall: true })),
     );
     // The prime spot for a malicious postinstall is the first dependency
-    // install, so the firewall must run ahead of it in postCreateCommand.
-    expect(dc.postCreateCommand).toBe(
-      'sudo /usr/local/bin/init-firewall.sh && npm install',
-    );
+    // install, so the firewall must run ahead of it in postCreateCommand — and
+    // ahead of the plugin install too, which needs GitHub egress (allowlisted).
     const cmd = dc.postCreateCommand;
+    expect(cmd.startsWith('sudo /usr/local/bin/init-firewall.sh && ')).toBe(
+      true,
+    );
     expect(cmd.indexOf('init-firewall.sh')).toBeLessThan(
       cmd.indexOf('npm install'),
+    );
+    expect(cmd.indexOf('npm install')).toBeLessThan(
+      cmd.indexOf('claude plugin install'),
     );
   });
 });

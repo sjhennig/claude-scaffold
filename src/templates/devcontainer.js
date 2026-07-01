@@ -2,6 +2,8 @@
  * Generates .devcontainer/Dockerfile and .devcontainer/devcontainer.json
  */
 
+import { PLUGIN_ID } from './guardrails.js';
+
 export function generateDockerfile(config = {}) {
   // Opt-in network-egress firewall (M9 Option A; docs/specs/network-isolation.md):
   // extra packages for the iptables/ipset allowlist, plus the script copied into
@@ -154,9 +156,21 @@ export function generateDevcontainerJson(config) {
     features: {
       'ghcr.io/devcontainers/features/github-cli:1': {},
     },
-    postCreateCommand: config.networkFirewall
-      ? 'sudo /usr/local/bin/init-firewall.sh && npm install'
-      : 'npm install',
+    // Ordered postCreate: (firewall up first, if enabled) → install deps →
+    // install the guardrails plugin. As of Claude Code v2.1.195 a plugin merely
+    // *enabled* in settings.json from an external marketplace no longer
+    // auto-loads — it must be installed — so we do it here to keep the
+    // devcontainer's /qc + QC reviewers working without a manual step. The
+    // install is NON-FATAL (`|| echo …`): a transient network/trust hiccup must
+    // not fail postCreate and brick the container; the README documents the
+    // manual `claude plugin install` as the fallback.
+    postCreateCommand: [
+      config.networkFirewall ? 'sudo /usr/local/bin/init-firewall.sh' : null,
+      'npm install',
+      `(claude plugin install ${PLUGIN_ID} || echo 'guardrails plugin auto-install failed — see README for the manual claude plugin install step')`,
+    ]
+      .filter(Boolean)
+      .join(' && '),
     remoteUser: 'node',
   };
 

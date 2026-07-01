@@ -21,7 +21,11 @@
     },
     {
       "name": "self-verification",
-      "files": ["scripts/boot-test.mjs", "scripts/agent-smoke.mjs"],
+      "files": [
+        "scripts/boot-test.mjs",
+        "scripts/agent-smoke.mjs",
+        "scripts/plugin-install-test.mjs"
+      ],
       "spec": "docs/specs/self-verification.md"
     },
     {
