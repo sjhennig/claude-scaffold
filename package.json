@@ -32,8 +32,10 @@
     "test:boot": "node scripts/boot-test.mjs",
     "test:agent-smoke": "node scripts/agent-smoke.mjs",
     "test:pack": "node scripts/pack-test.mjs",
+    "test:firewall-boot": "node scripts/firewall-boot-test.mjs",
     "lint": "eslint .",
     "lint:fix": "eslint --fix .",
+    "lint:shell": "node scripts/lint-shell.mjs",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "verify": "npm run format:check && npm run lint && npm test"

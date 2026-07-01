@@ -36,7 +36,11 @@
     },
     {
       "name": "network-isolation",
-      "files": ["src/templates/devcontainer.js"],
+      "files": [
+        "src/templates/devcontainer.js",
+        "scripts/lint-shell.mjs",
+        "scripts/firewall-boot-test.mjs"
+      ],
       "spec": "docs/specs/network-isolation.md"
     }
   ]

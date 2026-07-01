@@ -178,7 +178,13 @@ Adopt **both**, as M9, phased by cost/risk (see NOTES.md 2026-06-30):
   splitting persisted _config_ from _credentials_, at least initially).
 - **Allowlist refresh** → fetch GitHub ranges at runtime (`api.github.com/meta`)
   - resolve a small `ALLOWED_DOMAINS` list (npm registry, Anthropic endpoints)
-    at start; no pinned CIDRs to rot. Editable in the emitted script.
+    at start rather than committing CIDRs to the repo. Editable in the emitted
+    script. Caveat (documented in the script): GitHub's published ranges are
+    stable, but the per-domain A-records ARE effectively pinned at start and can
+    rotate mid-session for CDN-fronted hosts (npm/anthropic/sentry) — egress to
+    an "allowlisted" domain can then drop until the script is re-run. No periodic
+    refresh mechanism (deliberately out of M9 scope); the remedy is `sudo
+/usr/local/bin/init-firewall.sh`.
 - **Preflight honesty** → `generateSandboxPreflightScript(config)` appends a note
   when the firewall is on, so the dormant-bwrap warning doesn't imply "no
   network boundary."
@@ -199,11 +205,21 @@ Adopt **both**, as M9, phased by cost/risk (see NOTES.md 2026-06-30):
 - **First install firewalled** → the firewall runs in `postCreateCommand` ahead
   of the initial `npm install`, not just `postStartCommand`, so the prime
   malicious-postinstall window is covered (the allowlist already permits npm).
+- **Runtime verification** → the emitted script is now exercised, not just
+  string-asserted: `npm run lint:shell` (shellcheck, in the `test` CI job) lints
+  it statically, and `npm run test:firewall-boot` (a `workflow_dispatch`-gated CI
+  job, `scripts/firewall-boot-test.mjs`) builds a firewalled image and runs
+  `init-firewall.sh` under `NET_ADMIN`, asserting DNS survives the reset and the
+  default-DROP allowlist holds. Both SKIP cleanly where the tool/daemon is
+  absent. This closed the "the reset flushed Docker's embedded-DNS nat redirect
+  and bricked the container" bug and the "host/LAN allow installed after the
+  network calls, so a fail-closed abort severed the dev connection" bug.
 
 ### Still open
 
-- Whether to dogfood the firewall on this repo's own `.devcontainer/` (it would
-  prove the LinuxKit-VM enforcement claim end-to-end, but risks disrupting active
-  sessions; left as a deliberate follow-up).
+- Whether to dogfood the firewall on this repo's own `.devcontainer/` (the
+  `firewall-boot` CI job now proves enforcement in an ephemeral image; dogfooding
+  would additionally prove it on a live LinuxKit-VM session, but risks disrupting
+  active work — left as a deliberate follow-up).
 - Whether a `doctor` check should verify the firewall is actually active in a
   scaffolded project that enabled it (parallel to the sandbox-honesty check).

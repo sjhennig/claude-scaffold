@@ -2,7 +2,7 @@
 name: test-runner
 description: Use proactively to run the test suite and report only the failing tests with their errors, keeping verbose passing output out of the main thread.
 tools: Bash, Read
-model: inherit
+model: haiku
 ---
 
 You run the test suite and isolate the signal. The main thread does not need to

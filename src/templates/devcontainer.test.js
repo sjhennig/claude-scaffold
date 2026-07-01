@@ -269,6 +269,41 @@ describe('generateInitFirewallScript', () => {
   it('degrades gracefully when the aggregate tool is absent', () => {
     expect(script).toContain('command -v aggregate');
   });
+
+  it('does NOT flush the nat/mangle tables (preserves Docker embedded DNS)', () => {
+    // Flushing nat destroys Docker's 127.0.0.11:53 redirect, breaking every dig
+    // and failing the whole script closed. Regression guard for that bug.
+    expect(script).not.toContain('iptables -t nat -F');
+    expect(script).not.toContain('iptables -t mangle -F');
+    // The reset must still clear our own (filter-table) rules and the ipset.
+    expect(script).toContain('iptables -F');
+    expect(script).toContain('ipset destroy allowed-domains');
+  });
+
+  it('restores ACCEPT policies during setup so a re-run is not self-blocked', () => {
+    // iptables -F clears rules but not chain policies; on a re-run (or the
+    // postStart pass after postCreate) the policy is already DROP, which would
+    // drop the script's own setup traffic. The reset must precede the fetch.
+    expect(script).toContain('iptables -P OUTPUT ACCEPT');
+    expect(script.indexOf('iptables -P OUTPUT ACCEPT')).toBeLessThan(
+      script.indexOf('api.github.com/meta'),
+    );
+    // ...and DROP is still (re-)established after the allowlist is built. Use
+    // lastIndexOf: the first `-P OUTPUT DROP` is the fail-closed trap (defined
+    // up top), the happy-path one is last.
+    expect(script.lastIndexOf('iptables -P OUTPUT DROP')).toBeGreaterThan(
+      script.indexOf('api.github.com/meta'),
+    );
+  });
+
+  it('installs the host/LAN ACCEPT rule before the network-dependent steps', () => {
+    // If the GitHub fetch aborts, the fail-closed trap must not sever the
+    // developer's host connection — so host/LAN egress is allowlisted first.
+    expect(script.indexOf('ip route show default')).toBeGreaterThan(-1);
+    expect(script.indexOf('ip route show default')).toBeLessThan(
+      script.indexOf('api.github.com/meta'),
+    );
+  });
 });
 
 // Dogfooding guard: this repo's .devcontainer/Dockerfile is maintained by hand
