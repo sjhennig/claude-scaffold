@@ -44,7 +44,11 @@ import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { spawnSync } from 'node:child_process';
 import { generateProject } from '../src/index.js';
-import { MARKETPLACE_NAME, PLUGIN_ID } from '../src/templates/guardrails.js';
+import {
+  MARKETPLACE_NAME,
+  PLUGIN_NAME,
+  PLUGIN_ID,
+} from '../src/templates/guardrails.js';
 
 // Absolute path to this repo's root — it holds .claude-plugin/marketplace.json,
 // which the smoke run registers as a local `directory` marketplace so the
@@ -112,6 +116,23 @@ try {
     'utf-8',
   );
 
+  // As of Claude Code v2.1.195, a plugin merely *enabled* in a project's
+  // settings.json from an external source (incl. a `directory` marketplace) no
+  // longer auto-loads — it must be explicitly installed, or its agents won't
+  // exist (headless has no trust/install prompt). Mirror the real end-user path:
+  // register the working-tree marketplace and install the plugin, both via the
+  // non-interactive `claude plugin` shell commands.
+  const claudePlugin = (...args) =>
+    spawnSync('claude', ['plugin', ...args], { cwd: root, encoding: 'utf-8' });
+  claudePlugin('marketplace', 'add', REPO_ROOT);
+  const install = claudePlugin('install', PLUGIN_ID);
+  if (install.status !== 0) {
+    console.error(
+      `\`claude plugin install ${PLUGIN_ID}\` failed (exit ${install.status}):\n${install.stderr || install.stdout || ''}`,
+    );
+    throw new Error('plugin install failed — cannot smoke-test the agent');
+  }
+
   // Seed a real staged diff for the reviewer to look at: a git repo with one
   // file carrying an obvious correctness bug. Bail loudly if any setup step
   // fails — an empty diff would make the reviewer say "no changes" (a non-empty
@@ -140,14 +161,16 @@ try {
     throw new Error('seeding produced no staged diff — nothing to review');
   }
 
-  console.log(`\n=== Invoking "${AGENT}" subagent in ${root} ===`);
+  // Plugin agents must be referenced by their scoped name in headless mode.
+  const scopedAgent = `${PLUGIN_NAME}:${AGENT}`;
+  console.log(`\n=== Invoking "${scopedAgent}" subagent in ${root} ===`);
   const { status, stdout, stderr } = spawnSync(
     'claude',
     [
       '-p',
       'Review the current staged changes (run `git diff --staged`). Report findings.',
       '--agent',
-      AGENT,
+      scopedAgent,
       '--output-format',
       'json',
       // Headless least privilege: auto-deny anything outside the allowlist

@@ -21,6 +21,37 @@ entries short and high-signal. Newest at the top.
 
 ---
 
+## 2026-07-01 — Claude Code v2.1.195 broke plugin auto-load; document + fix smoke
+
+**Context** — A `workflow_dispatch` run of the opt-in `agent-smoke` job failed:
+`--agent 'code-reviewer' not found. Available agents: <built-ins only>`. Root
+cause (confirmed via primary docs, discover-plugins.md): **as of Claude Code
+v2.1.195**, a plugin enabled only via a project's `.claude/settings.json` from an
+external source (GitHub — what generated projects use — and empirically a
+`directory` source) **no longer auto-loads**; it must be installed (trust-time
+prompt or `claude plugin install`), and plugin agents are now referenced by their
+**scoped** name (`claude-guardrails:code-reviewer`). The smoke installs the CLI
+unpinned and only runs on dispatch, so this upstream change surfaced silently.
+Not caused by us. See [[cli-plugin-install-required]].
+
+**Decision** — This is a real end-user regression (scaffolded projects' `/qc` +
+reviewers don't auto-activate on the current CLI), remediated in its own PR,
+separate from the M9 firewall work: (a) document the one-time install / trust
+step + scoped-name invocation in generated `README` and `CLAUDE.md`; (b) fix
+`scripts/agent-smoke.mjs` to mirror the real path — `claude plugin marketplace
+add` + `claude plugin install`, then invoke `--agent claude-guardrails:code-reviewer`
+(chose install-then-invoke over `--plugin-dir`, which would bypass and stop
+testing the marketplace path). Added a CLAUDE.md-content test for the note.
+
+**Consequences** — Restores the live smoke's meaning and tells users the extra
+step. Validation still needs a `workflow_dispatch` run (needs the API key; can't
+run in this sandbox). Deferred follow-up: consider a devcontainer `postCreate`
+`claude plugin install` so devcontainer users skip the manual step (needs its own
+headless trust/auth verification). Enterprise managed-settings `enabledPlugins`
+force-load is out of scope for this project.
+
+---
+
 ## 2026-07-01 — QC subagents: per-agent model, not uniform `inherit`
 
 **Context** — All four QC agents were `model: inherit` (enforced by
