@@ -21,7 +21,32 @@ entries short and high-signal. Newest at the top.
 
 ---
 
-## 2026-07-01 — Devcontainer auto-installs the guardrails plugin
+## 2026-07-01 — `--here` overlay mode (retrofit guardrails onto an existing project)
+
+**Context** — The CLI only created fresh `./<name>/` projects; users with an
+existing project had to hand-copy the guardrail layer. Added a first-class
+`--here` overlay.
+
+**Decision** — `--here` writes the framework-agnostic guardrail layer into the
+cwd. Design choices: **never clobber** — every file is write-if-absent (existing
+files reported as skipped; `--force` overrides); **merge, don't replace**
+`package.json` via a pure `mergePackageJson` (adds guardrail scripts + devDeps,
+existing keys always win, same-named-script conflicts reported); scope =
+guardrail core **+ fill-in JS tooling** (eslint/prettier/vitest configs) when
+absent, so `verify` works out of the box; **skip** README, `.env`, framework app
+files / `src/smoke.test.js`, and `git init`. Name derived from the cwd basename
+(`sanitizeProjectName`). Validation forbids a positional name / `--framework` /
+`--port` with `--here`, and `--yes --here` needs no name. Refactored the shared
+guardrail file list into `buildCommonFiles` so full-generate and overlay can't
+drift; `generateProject` behavior is unchanged.
+
+**Consequences** — Retrofitting is now `claude-scaffold --here` instead of a
+manual copy. Reused the existing generators (incl. `getFrameworkFiles({framework:
+'none'})` as the single source of guardrail package.json + tooling). Proven by
+unit tests + a manual E2E (seeded project: merged package.json kept the user's
+jest `test`, existing CLAUDE.md/README untouched, idempotent re-run). Follow-up:
+optionally extend `scripts/pack-test.mjs` to drive `--here` from the packed
+artifact.
 
 **Context** — Follow-up to the v2.1.195 plugin-load regression: documenting the
 manual `claude plugin install` (previous entry) was only a stopgap — scaffolded

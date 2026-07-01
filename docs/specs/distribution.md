@@ -16,6 +16,16 @@ belongs to an unrelated tool; the **binary** is still `claude-scaffold`
 stream (`cli-vX.Y.Z` tags, npm semver) is deliberately independent of the
 plugin's (`guardrails-vX.Y.Z`) — see the M7/M8 NOTES decisions.
 
+**Two invocation modes:** the default creates a fresh `./<name>/` project;
+`--here` **overlays the framework-agnostic guardrail layer onto the current
+directory** (an existing project). Overlay writes the guardrail core + fill-in
+JS tooling **write-if-absent** (never clobbers existing files; `--force` to
+overwrite), **merges** an existing `package.json` (adds the guardrail
+scripts/devDeps, existing keys win) rather than replacing it, and skips
+framework app files, `README.md`, `.env`, and `git init`. It derives the project
+name from the cwd basename and needs no project name / `--framework` / `--port`.
+See `src/index.js` (`overlayProject`, `mergePackageJson`) and `src/cli-args.js`.
+
 ## Owning files
 
 - `scripts/pack-test.mjs` (`npm run test:pack`) — self-verification of the
