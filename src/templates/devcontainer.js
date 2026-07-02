@@ -97,6 +97,15 @@ ENV PATH=$PATH:/usr/local/share/npm-global/bin
 # Persist bash history across container rebuilds via a named volume
 RUN mkdir -p /home/node/.bash_history_dir && chown node:node /home/node/.bash_history_dir
 
+# Pre-create the Claude config dir owned by node so the credentials mount is
+# writable by the node user. With --isolated-creds this mount point is a FRESH
+# named volume, and Docker seeds a new volume with the ownership of the image
+# directory it covers — so without this the volume is created root-owned and
+# node's postCreate (\`claude plugin marketplace add\`/\`install\`, which mkdir's
+# ~/.claude/plugins) fails with EACCES. Harmless in the default host-bind mode:
+# the bind overlays this dir at runtime with the host's ownership.
+RUN mkdir -p /home/node/.claude && chown -R node:node /home/node/.claude
+
 USER node
 
 # Pre-install Claude Code as node (into the node-owned prefix above) so it's
@@ -167,18 +176,29 @@ export function generateDevcontainerJson(config) {
     features: {
       'ghcr.io/devcontainers/features/github-cli:1': {},
     },
-    // Ordered postCreate: (firewall up first, if enabled) → install deps → add
-    // the marketplace + install the guardrails plugin. As of Claude Code
-    // v2.1.195 a plugin merely *enabled* in settings.json from an external
-    // marketplace no longer auto-loads — and headlessly that enablement isn't
-    // even honored without an interactive folder-trust — so we add the
-    // marketplace explicitly (pinned to the same tag) and install, keeping the
-    // devcontainer's /qc + QC reviewers working with no manual step. The
-    // `marketplace add` is `|| true` (harmless if already added on a rebuild);
-    // the whole step is NON-FATAL (`|| echo …`): a transient network/trust hiccup
-    // must not fail postCreate and brick the container. README documents the
-    // manual fallback.
+    // Ordered postCreate: (heal ~/.claude ownership) → (firewall up first, if
+    // enabled) → install deps → add the marketplace + install the guardrails
+    // plugin. As of Claude Code v2.1.195 a plugin merely *enabled* in
+    // settings.json from an external marketplace no longer auto-loads — and
+    // headlessly that enablement isn't even honored without an interactive
+    // folder-trust — so we add the marketplace explicitly (pinned to the same
+    // tag) and install, keeping the devcontainer's /qc + QC reviewers working
+    // with no manual step. The `marketplace add` is `|| true` (harmless if
+    // already added on a rebuild); the whole step is NON-FATAL (`|| echo …`): a
+    // transient network/trust hiccup must not fail postCreate and brick the
+    // container. README documents the manual fallback.
+    //
+    // The leading `chown` heals a ~/.claude that a *pre-existing* named volume
+    // owns as root: the Dockerfile chown only seeds a FRESH volume, and Docker
+    // does not re-apply it to a volume created by an earlier build — so without
+    // this a `--isolated-creds` container built before that fix keeps a
+    // root-owned ~/.claude on rebuild, and `/login` can't write
+    // .credentials.json (OAuth succeeds but the token never persists → "not
+    // logged in"). Best-effort: no-op on an already node-owned volume or a host
+    // bind mount, and `|| true` so it can't fail postCreate where node's sudo is
+    // narrowed to only the firewall script (--network-firewall).
     postCreateCommand: [
+      'sudo chown -R node:node /home/node/.claude 2>/dev/null || true',
       config.networkFirewall ? 'sudo /usr/local/bin/init-firewall.sh' : null,
       'npm install',
       `(claude plugin marketplace add ${MARKETPLACE_ADD_ARG} || true; claude plugin install ${PLUGIN_ID}) || echo 'guardrails plugin auto-install failed — see README for the manual claude plugin install step'`,
