@@ -21,6 +21,39 @@ entries short and high-signal. Newest at the top.
 
 ---
 
+## 2026-07-02 — isolated-creds `~/.claude` must be node-owned at BOTH build and rebuild
+
+**Context** — A `--here` retrofit with `--isolated-creds` failed two ways in the
+generated devcontainer: (1) `postCreate`'s `claude plugin marketplace add` died
+with `EACCES: mkdir '/home/node/.claude/plugins'`, and (2) after that was
+patched, `/login` authenticated but never persisted ("not logged in"). Root
+cause of both: the `claude-config-${devcontainerId}` **named volume** mounts at
+`/home/node/.claude`, but the image never created that dir — so Docker seeded the
+fresh volume **root-owned**, and `node` could neither `mkdir plugins` nor write
+`~/.claude/.credentials.json` (Linux stores creds only in that plaintext file; no
+keyring). The `|| true` on `marketplace add` masked #1 as a misleading "plugin
+not found in marketplace."
+
+**Decision** — Fix in `templates/devcontainer.js` at **two** layers, because
+Docker only seeds a volume's ownership when it is first created and never
+re-applies it to an existing volume: (a) Dockerfile pre-creates + `chown`s
+`/home/node/.claude` before `USER node` (fixes FRESH volumes / new projects);
+(b) `postCreateCommand` leads with a best-effort `sudo chown -R node:node
+/home/node/.claude 2>/dev/null || true` to heal a volume created by a build that
+predated (a). The heal is a no-op on a healthy volume or host bind mount, and
+`|| true` keeps it safe under `--network-firewall` (node's sudo is narrowed to
+only `init-firewall.sh` there; fresh firewall-mode volumes are covered by (a)).
+
+**Consequences** — The Dockerfile chown alone is NOT sufficient for anyone who
+built the container once before the fix; the postCreate heal is what makes a
+plain Rebuild recover them. Manual recovery without a rebuild:
+`sudo chown -R node:node /home/node/.claude` then re-`/login`. Not
+`--here`-specific — the devcontainer template is identical for full generation —
+but `--here` + `--isolated-creds` is how it surfaced. Firewall-mode
+
+- pre-existing-root-owned-volume is the one gap the heal can't close (sudo
+  denied); those users must `docker volume rm` the stale volume and rebuild.
+
 ## 2026-07-01 — `--here` overlay mode (retrofit guardrails onto an existing project)
 
 **Context** — The CLI only created fresh `./<name>/` projects; users with an

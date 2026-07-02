@@ -80,6 +80,21 @@ describe('generateDockerfile', () => {
       dockerfile.indexOf('npm install -g @anthropic-ai/claude-code'),
     );
   });
+
+  it('pre-creates a node-owned /home/node/.claude as root (so a fresh --isolated-creds volume is writable)', () => {
+    const dockerfile = generateDockerfile();
+    // The mount point must exist and be node-owned in the image: Docker seeds a
+    // fresh named volume with the image dir's ownership, so without this the
+    // isolated-creds volume is root-owned and node's postCreate plugin install
+    // (which mkdir's ~/.claude/plugins) fails with EACCES.
+    expect(dockerfile).toMatch(
+      /mkdir -p \/home\/node\/\.claude[\s\S]*chown -R node:node \/home\/node\/\.claude/,
+    );
+    // Must run as root (before USER node) or the chown itself would fail.
+    expect(
+      dockerfile.indexOf('chown -R node:node /home/node/.claude'),
+    ).toBeLessThan(dockerfile.indexOf('USER node'));
+  });
 });
 
 describe('generateDevcontainerJson', () => {
@@ -169,6 +184,25 @@ describe('generateDevcontainerJson', () => {
     expect(cmd).toContain('|| echo');
   });
 
+  it('heals ~/.claude ownership before writing to it (pre-existing root-owned volume)', () => {
+    const cmd = JSON.parse(
+      generateDevcontainerJson(baseConfig),
+    ).postCreateCommand;
+    // A named volume created by a build predating the Dockerfile chown stays
+    // root-owned on rebuild (Docker only seeds ownership on a FRESH volume), so
+    // /login can't write .credentials.json. Best-effort self-heal, and it must
+    // run before the plugin install (the first thing that writes ~/.claude).
+    expect(cmd).toContain('chown -R node:node /home/node/.claude');
+    // `|| true` so it can't fail postCreate where node's sudo is narrowed
+    // (--network-firewall) or the dir is already node-owned.
+    expect(cmd).toMatch(
+      /chown -R node:node \/home\/node\/\.claude[^&]*\|\| true/,
+    );
+    expect(cmd.indexOf('chown -R node:node /home/node/.claude')).toBeLessThan(
+      cmd.indexOf('claude plugin install'),
+    );
+  });
+
   it('installs the GitHub CLI via a devcontainer feature', () => {
     const result = JSON.parse(generateDevcontainerJson(baseConfig));
     expect(result.features).toHaveProperty(
@@ -235,8 +269,11 @@ describe('network-egress firewall (opt-in, M9 Option A)', () => {
     // install, so the firewall must run ahead of it in postCreateCommand — and
     // ahead of the plugin install too, which needs GitHub egress (allowlisted).
     const cmd = dc.postCreateCommand;
-    expect(cmd.startsWith('sudo /usr/local/bin/init-firewall.sh && ')).toBe(
-      true,
+    // The firewall runs ahead of npm install; only the ~/.claude ownership heal
+    // (which executes no untrusted code) precedes it.
+    expect(cmd).toContain('sudo /usr/local/bin/init-firewall.sh');
+    expect(cmd.indexOf('chown -R node:node /home/node/.claude')).toBeLessThan(
+      cmd.indexOf('init-firewall.sh'),
     );
     expect(cmd.indexOf('init-firewall.sh')).toBeLessThan(
       cmd.indexOf('npm install'),
