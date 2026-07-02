@@ -20,10 +20,15 @@ import {
 export const USAGE = `Usage:
   claude-scaffold                      scaffold a project (interactive prompts)
   claude-scaffold <name> [flags]       scaffold non-interactively
+  claude-scaffold --here [flags]       overlay guardrails onto the current project
   claude-scaffold doctor               check Claude Code + guardrail config health
 
 Flags (each replaces one prompt; anything omitted is asked interactively,
 or defaulted with --yes):
+  --here                   add the guardrail layer to the CURRENT directory
+                           (merges package.json; never overwrites existing files;
+                           no framework app files; framework-agnostic)
+  --force                  with --here, overwrite existing guardrail files
   --description <text>     one-line project description
   --framework <id>         ${FRAMEWORK_VALUES.join(' | ')}
   --port <n>               dev server port (invalid with --framework none)
@@ -68,6 +73,8 @@ export function parseCliArgs(argv) {
         'isolated-creds': { type: 'boolean' },
         'network-firewall': { type: 'boolean' },
         'no-git': { type: 'boolean' },
+        here: { type: 'boolean' },
+        force: { type: 'boolean' },
         yes: { type: 'boolean', short: 'y' },
         help: { type: 'boolean', short: 'h' },
       },
@@ -87,15 +94,35 @@ export function parseCliArgs(argv) {
   const errors = [];
   const provided = {};
 
-  if (positionals.length > 1) {
+  // Overlay mode: write the guardrail layer into the current directory instead
+  // of a new ./<name>/ subtree. It derives its name from the cwd, is
+  // framework-agnostic, and never runs framework app-file generation — so a
+  // project name, --framework, and --port are all meaningless with it.
+  const here = Boolean(values.here);
+  if (here) provided.here = true;
+  if (values.force) provided.force = true;
+
+  if (here && positionals.length > 0) {
+    errors.push(
+      '--here overlays the current directory; do not also pass a project name.',
+    );
+  } else if (positionals.length > 1) {
     errors.push(
       `Expected at most one project name, got: ${positionals.join(' ')}`,
     );
-  }
-  if (positionals.length === 1) {
+  } else if (positionals.length === 1) {
     const valid = validateProjectName(positionals[0]);
     if (valid !== true) errors.push(`Project name: ${valid}`);
     else provided.projectName = positionals[0];
+  }
+
+  if (here && values.framework !== undefined) {
+    errors.push(
+      '--framework is not used with --here (it is framework-agnostic).',
+    );
+  }
+  if (here && values.port !== undefined) {
+    errors.push('--port is not valid with --here (no dev server).');
   }
 
   if (values.description !== undefined) {
@@ -132,8 +159,9 @@ export function parseCliArgs(argv) {
   if (values['no-git']) provided.initGit = false;
 
   // --yes is for scripts/CI: it must never fall back to a prompt, and the one
-  // answer without a default is the name.
-  if (values.yes && provided.projectName === undefined) {
+  // answer without a default is the name. --here derives the name from the cwd,
+  // so it needs no project name.
+  if (values.yes && !here && provided.projectName === undefined) {
     errors.push('A project name is required with --yes (nothing to prompt).');
   }
 

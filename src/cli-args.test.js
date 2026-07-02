@@ -123,6 +123,8 @@ describe('parseCliArgs', () => {
 
   it('USAGE documents every flag and the doctor subcommand', () => {
     for (const piece of [
+      '--here',
+      '--force',
       '--description',
       '--framework',
       '--port',
@@ -135,5 +137,50 @@ describe('parseCliArgs', () => {
     ]) {
       expect(USAGE).toContain(piece);
     }
+  });
+
+  describe('--here overlay mode', () => {
+    it('maps --here (and --force) without needing a project name', () => {
+      const { provided, errors } = parseCliArgs(['--here', '--force']);
+      expect(errors).toEqual([]);
+      expect(provided).toEqual({ here: true, force: true });
+    });
+
+    it('does not require a project name with --here --yes', () => {
+      const { provided, yes, errors } = parseCliArgs(['--here', '--yes']);
+      expect(errors).toEqual([]);
+      expect(yes).toBe(true);
+      expect(provided.here).toBe(true);
+      expect(provided.projectName).toBeUndefined();
+    });
+
+    it('rejects a positional project name with --here', () => {
+      const { errors } = parseCliArgs(['my-app', '--here']);
+      expect(errors.join(' ')).toContain('overlays the current directory');
+    });
+
+    it('rejects --framework with --here (it is framework-agnostic)', () => {
+      const { errors } = parseCliArgs(['--here', '--framework', 'node-ts']);
+      expect(errors.join(' ')).toContain('not used with --here');
+    });
+
+    it('rejects --port with --here', () => {
+      const { errors } = parseCliArgs(['--here', '--port', '3000']);
+      expect(errors.join(' ')).toContain('--port is not valid with --here');
+    });
+
+    it('still allows devcontainer flags with --here', () => {
+      const { provided, errors } = parseCliArgs([
+        '--here',
+        '--network-firewall',
+        '--isolated-creds',
+      ]);
+      expect(errors).toEqual([]);
+      expect(provided).toMatchObject({
+        here: true,
+        networkFirewall: true,
+        isolatedCredentials: true,
+      });
+    });
   });
 });

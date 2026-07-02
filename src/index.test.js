@@ -1,5 +1,13 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { mkdtemp, rm, readFile, access, readdir, stat } from 'fs/promises';
+import {
+  mkdtemp,
+  rm,
+  readFile,
+  writeFile,
+  access,
+  readdir,
+  stat,
+} from 'fs/promises';
 import { join } from 'path';
 import { tmpdir } from 'os';
 
@@ -8,7 +16,7 @@ vi.mock('./prompts.js', () => ({
   gatherInput: vi.fn(),
 }));
 
-import { run } from './index.js';
+import { run, mergePackageJson, sanitizeProjectName } from './index.js';
 import { gatherInput } from './prompts.js';
 import {
   VERIFY_SCRIPT_TS,
@@ -516,5 +524,160 @@ describe('run (orchestrator)', () => {
     const root = join(tempDir, config.projectName);
     const app = await readFile(join(root, 'src/App.tsx'), 'utf-8');
     expect(app).toContain('spot-react');
+  });
+});
+
+describe('mergePackageJson', () => {
+  const guardrail = {
+    scripts: { verify: 'v', lint: 'l', test: 'guardrail-test' },
+    devDependencies: { eslint: '^9', prettier: '^3' },
+  };
+
+  it('adds missing guardrail scripts + devDeps without clobbering existing', () => {
+    const existing = {
+      name: 'mine',
+      version: '2.0.0',
+      scripts: { test: 'jest', build: 'tsc' },
+      devDependencies: { jest: '^29' },
+    };
+    const { merged, addedScripts, conflictScripts, addedDevDeps } =
+      mergePackageJson(existing, guardrail);
+
+    // Existing values win — name/version and the user's `test` are untouched.
+    expect(merged.name).toBe('mine');
+    expect(merged.version).toBe('2.0.0');
+    expect(merged.scripts.test).toBe('jest');
+    expect(merged.scripts.build).toBe('tsc');
+    // Missing guardrail keys are added.
+    expect(merged.scripts.verify).toBe('v');
+    expect(merged.scripts.lint).toBe('l');
+    expect(merged.devDependencies.eslint).toBe('^9');
+    expect(merged.devDependencies.jest).toBe('^29');
+
+    expect(addedScripts).toEqual(expect.arrayContaining(['verify', 'lint']));
+    expect(addedScripts).not.toContain('test');
+    expect(conflictScripts).toContain('test'); // differs from guardrail's
+    expect(addedDevDeps).toEqual(
+      expect.arrayContaining(['eslint', 'prettier']),
+    );
+  });
+
+  it('handles a package.json with no scripts/devDependencies blocks', () => {
+    const { merged, addedScripts } = mergePackageJson({ name: 'x' }, guardrail);
+    expect(merged.scripts.verify).toBe('v');
+    expect(addedScripts).toContain('verify');
+    expect(merged.devDependencies.prettier).toBe('^3');
+  });
+});
+
+describe('sanitizeProjectName', () => {
+  it('lowercases and replaces invalid chars', () => {
+    expect(sanitizeProjectName('My App')).toBe('my-app');
+    expect(sanitizeProjectName('Foo_Bar.2')).toBe('foo-bar-2');
+    expect(sanitizeProjectName('---weird---')).toBe('weird');
+  });
+  it('falls back to "app" for an empty/invalid basename', () => {
+    expect(sanitizeProjectName('!!!')).toBe('app');
+    expect(sanitizeProjectName('')).toBe('app');
+  });
+});
+
+describe('run (--here overlay)', () => {
+  let tempDir;
+
+  const overlayConfig = {
+    projectName: 'my-proj',
+    description: 'An existing project',
+    framework: 'none',
+    useAnthropicApi: false,
+    additionalKeys: [],
+    isolatedCredentials: false,
+    networkFirewall: false,
+    initGit: true, // must be IGNORED in overlay mode
+    here: true,
+    force: false,
+  };
+
+  beforeEach(async () => {
+    tempDir = await mkdtemp(join(tmpdir(), 'overlay-test-'));
+    vi.spyOn(process, 'cwd').mockReturnValue(tempDir);
+    vi.spyOn(console, 'log').mockImplementation(() => {});
+    vi.spyOn(console, 'warn').mockImplementation(() => {});
+  });
+
+  afterEach(async () => {
+    vi.restoreAllMocks();
+    await rm(tempDir, { recursive: true, force: true });
+  });
+
+  it('overlays the guardrail layer in place, merges package.json, keeps existing files', async () => {
+    // Seed an existing project: a package.json with a custom test script + a
+    // CLAUDE.md the overlay must NOT clobber.
+    await writeFile(
+      join(tempDir, 'package.json'),
+      JSON.stringify(
+        { name: 'legacy', version: '1.2.3', scripts: { test: 'jest' } },
+        null,
+        2,
+      ),
+    );
+    await writeFile(join(tempDir, 'CLAUDE.md'), 'MY OWN CLAUDE FILE\n');
+
+    gatherInput.mockResolvedValue(overlayConfig);
+    await run({ provided: { here: true }, yes: true });
+
+    // Guardrail files land directly in the cwd (no ./my-proj subdir).
+    expect(await fileExists(join(tempDir, '.claude/settings.json'))).toBe(true);
+    expect(await fileExists(join(tempDir, '.devcontainer/Dockerfile'))).toBe(
+      true,
+    );
+    expect(await fileExists(join(tempDir, 'docs/architecture.md'))).toBe(true);
+    // No new ./my-proj subdir was created.
+    expect(await fileExists(join(tempDir, 'my-proj'))).toBe(false);
+
+    // Fill-in tooling written; smoke test + framework app files NOT.
+    expect(await fileExists(join(tempDir, 'eslint.config.js'))).toBe(true);
+    expect(await fileExists(join(tempDir, '.prettierrc'))).toBe(true);
+    expect(await fileExists(join(tempDir, 'src/smoke.test.js'))).toBe(false);
+
+    // README + .env are intentionally not overlaid; no git init.
+    expect(await fileExists(join(tempDir, 'README.md'))).toBe(false);
+    expect(await fileExists(join(tempDir, '.env'))).toBe(false);
+    expect(await fileExists(join(tempDir, '.git'))).toBe(false);
+
+    // Existing CLAUDE.md untouched (skipped, not overwritten).
+    expect(await readFile(join(tempDir, 'CLAUDE.md'), 'utf-8')).toBe(
+      'MY OWN CLAUDE FILE\n',
+    );
+
+    // package.json merged: existing name/version/test kept, guardrail added.
+    const pkg = JSON.parse(
+      await readFile(join(tempDir, 'package.json'), 'utf-8'),
+    );
+    expect(pkg.name).toBe('legacy');
+    expect(pkg.version).toBe('1.2.3');
+    expect(pkg.scripts.test).toBe('jest');
+    expect(pkg.scripts.verify).toBeDefined();
+    expect(pkg.devDependencies.prettier).toBeDefined();
+  });
+
+  it('creates package.json from the guardrail template when none exists', async () => {
+    gatherInput.mockResolvedValue(overlayConfig);
+    await run({ provided: { here: true }, yes: true });
+
+    const pkg = JSON.parse(
+      await readFile(join(tempDir, 'package.json'), 'utf-8'),
+    );
+    expect(pkg.scripts.verify).toBeDefined();
+    expect(pkg.devDependencies.eslint).toBeDefined();
+  });
+
+  it('overwrites existing guardrail files when --force is set', async () => {
+    await writeFile(join(tempDir, 'CLAUDE.md'), 'OLD\n');
+    gatherInput.mockResolvedValue({ ...overlayConfig, force: true });
+    await run({ provided: { here: true, force: true }, yes: true });
+    expect(await readFile(join(tempDir, 'CLAUDE.md'), 'utf-8')).not.toBe(
+      'OLD\n',
+    );
   });
 });
